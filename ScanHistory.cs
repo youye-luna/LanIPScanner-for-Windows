@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http;
 
 namespace DhcpScanner
 {
@@ -83,13 +82,7 @@ namespace DhcpScanner
         /// </summary>
         public static List<ScanHistoryRecord> Load()
         {
-            #region debug-point history-load-entry:记录历史加载入口
-            ReportDebug("ScanHistoryStore.Load", "[DEBUG] history load entry", new { path = HistoryDir, exists = Directory.Exists(HistoryDir), length = GetHistoryLength() });
-            #endregion
             var records = ApplyRetention(ReadAll());
-            #region debug-point history-load-complete:记录历史加载完成
-            ReportDebug("ScanHistoryStore.Load", "[DEBUG] history load complete", new { path = HistoryDir, exists = Directory.Exists(HistoryDir), length = GetHistoryLength(), count = records.Count });
-            #endregion
             return records;
         }
 
@@ -98,9 +91,6 @@ namespace DhcpScanner
         /// </summary>
         public static void Save(ScanHistoryRecord record)
         {
-            #region debug-point history-save-entry:记录历史保存入口
-            ReportDebug("ScanHistoryStore.Save", "[DEBUG] history save entry", new { path = record.FilePath, count = record.Devices?.Count ?? 0 });
-            #endregion
             string targetPath = string.Empty;
             try
             {
@@ -124,16 +114,10 @@ namespace DhcpScanner
                 WriteCsv(filePath, record);
                 record.FilePath = filePath;
                 targetPath = filePath;
-                #region debug-point history-save-complete:记录历史保存完成
-                ReportDebug("ScanHistoryStore.Save", "[DEBUG] history save complete", new { path = targetPath, exists = File.Exists(targetPath), length = File.Exists(targetPath) ? new FileInfo(targetPath).Length : 0, count = record.Devices?.Count ?? 0 });
-                #endregion
                 Prune();
             }
             catch (Exception ex)
             {
-                #region debug-point history-save-error:记录历史保存异常
-                ReportDebug("ScanHistoryStore.Save", "[DEBUG] history save exception", new { path = targetPath, exceptionType = ex.GetType().FullName, message = ex.Message });
-                #endregion
             }
         }
 
@@ -315,9 +299,6 @@ namespace DhcpScanner
         /// </summary>
         private static ScanHistoryRecord? ReadCsv(string filePath)
         {
-            #region debug-point history-read-entry:记录单文件加载入口
-            ReportDebug("ScanHistoryStore.ReadCsv", "[DEBUG] history file load entry", new { path = filePath, exists = File.Exists(filePath), length = File.Exists(filePath) ? new FileInfo(filePath).Length : 0 });
-            #endregion
             try
             {
                 var lines = File.ReadAllLines(filePath, Encoding.UTF8);
@@ -405,9 +386,6 @@ namespace DhcpScanner
             }
             catch (Exception ex)
             {
-                #region debug-point history-read-error:记录单文件加载异常
-                ReportDebug("ScanHistoryStore.ReadCsv", "[DEBUG] history file load exception", new { path = filePath, exists = File.Exists(filePath), length = File.Exists(filePath) ? new FileInfo(filePath).Length : 0, exceptionType = ex.GetType().FullName, message = ex.Message });
-                #endregion
             }
             return null;
         }
@@ -450,9 +428,6 @@ namespace DhcpScanner
             return fields;
         }
 
-        #region debug-point history-debug-reporter:调试事件上报方法
-        private static readonly HttpClient DebugHttpClient = new();
-
         private static long GetHistoryLength()
         {
             try
@@ -466,27 +441,6 @@ namespace DhcpScanner
                 return 0;
             }
         }
-
-        private static void ReportDebug(string location, string msg, object data)
-        {
-            try
-            {
-                var payload = new
-                {
-                    sessionId = "history-save-test",
-                    runId = "pre-fix",
-                    hypothesisId = "history-persistence",
-                    location,
-                    msg,
-                    data,
-                    ts = DateTimeOffset.UtcNow.ToString("O")
-                };
-                _ = DebugHttpClient.PostAsync("http://127.0.0.1:7777/event",
-                    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-            }
-            catch { }
-        }
-        #endregion
 
         private static string EscapeCsvField(string field)
         {

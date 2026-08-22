@@ -428,25 +428,8 @@ namespace DhcpScanner
         /// <summary>
         /// 将本次扫描结果自动保存到历史记录
         /// </summary>
-        #region debug-point scan-history-debug-reporter:扫描完成调试事件上报方法
-        private static readonly HttpClient DebugHistoryHttpClient = new();
-
-        private static async Task ReportDebugHistory(string location, string msg, object data)
-        {
-            try
-            {
-                var payload = new { sessionId = "history-save-test", runId = "pre-fix", hypothesisId = "history-persistence", location, msg, data, ts = DateTimeOffset.UtcNow.ToString("O") };
-                await DebugHistoryHttpClient.PostAsync("http://127.0.0.1:7777/event", new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-            }
-            catch { }
-        }
-        #endregion
-
         private void SaveScanHistory(List<DhcpServerInfo> results)
         {
-            #region debug-point scan-history-save-trigger:记录扫描完成触发历史保存
-            _ = ReportDebugHistory("MainForm.SaveScanHistory", "[DEBUG] scan completed history save trigger", new { called = true, count = results?.Count ?? 0 });
-            #endregion
             var record = new ScanHistoryRecord
             {
                 ScanTime = DateTime.Now,

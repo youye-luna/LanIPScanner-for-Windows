@@ -233,15 +233,16 @@ namespace DhcpScanner
 
             var statusColor = isDhcp ? Color.FromArgb(255, 138, 128) : isActive ? Color.FromArgb(33, 150, 243) : Color.FromArgb(158, 158, 158);
 
-            var form = new Form
+            using var form = new Form
             {
                 Text = string.Format(Lang.Get("DeviceDetail"), ip),
-                Size = new Size(420, 400),
+                ClientSize = new Size(480, 420),
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 StartPosition = FormStartPosition.CenterParent,
                 MaximizeBox = false,
                 MinimizeBox = false,
                 BackColor = Color.White,
+                KeyPreview = true,
             };
 
             // 状态颜色条（顶部）
@@ -267,7 +268,7 @@ namespace DhcpScanner
             // 状态标签
             var lblStatusTag = new Label
             {
-                Text = isDhcp ? Lang.Get("ColDhcp") : isActive ? Lang.Get("Online") : Lang.Get("NoDevice"),
+                Text = isDhcp ? $"{Lang.Get("Online")}  |  {Lang.Get("ColDhcp")}" : isActive ? Lang.Get("Online") : Lang.Get("NoDevice"),
                 Font = new Font("Microsoft YaHei", 9F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = statusColor,
@@ -277,41 +278,94 @@ namespace DhcpScanner
             };
             form.Controls.Add(lblStatusTag);
 
-            int y = 85;
-            int labelX = 25;
-            int valueX = 105;
+            int y = 86;
             var labelFont = new Font("Microsoft YaHei", 9.5F);
             var valueFont = new Font("Microsoft YaHei", 9.5F, FontStyle.Bold);
 
+            string pingText = long.TryParse(ping, out long pingMs) && pingMs >= 0 ? $"{pingMs} ms" : "-";
             var fields = new (string label, string value, Color color)[]
             {
                 (Lang.Get("FieldIp"), ip, Color.FromArgb(40, 40, 40)),
                 (Lang.Get("FieldMac"), mac, Color.FromArgb(40, 40, 40)),
                 (Lang.Get("FieldHost"), host, Color.FromArgb(40, 40, 40)),
-                (Lang.Get("FieldPing"), ping == "-" ? "-" : ping + " ms", isActive ? Color.FromArgb(76, 175, 80) : Color.Gray),
+                (Lang.Get("FieldPing"), pingText, pingText != "-" ? Color.FromArgb(46, 125, 50) : Color.Gray),
                 (Lang.Get("ColDhcp"), dhcp, isDhcp ? Color.Red : Color.FromArgb(40, 40, 40)),
             };
 
-            foreach (var (label, value, color) in fields)
+            var infoTable = new TableLayoutPanel
             {
-                form.Controls.Add(new Label
+                Location = new Point(20, y),
+                Size = new Size(form.ClientSize.Width - 40, fields.Length * 34),
+                ColumnCount = 2,
+                RowCount = fields.Length,
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
+                BackColor = Color.FromArgb(245, 247, 249),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            };
+            infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 105));
+            infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            for (int i = 0; i < fields.Length; i++)
+            {
+                var (label, value, color) = fields[i];
+                infoTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+                infoTable.Controls.Add(new Label
                 {
                     Text = label,
                     Font = labelFont,
-                    ForeColor = Color.FromArgb(120, 120, 120),
-                    AutoSize = true,
-                    Location = new Point(labelX, y),
-                });
-                form.Controls.Add(new Label
+                    ForeColor = Color.FromArgb(100, 100, 100),
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(10, 0, 4, 0),
+                }, 0, i);
+                infoTable.Controls.Add(new TextBox
                 {
                     Text = value,
                     Font = valueFont,
                     ForeColor = color,
-                    AutoSize = true,
-                    Location = new Point(valueX, y),
-                });
-                y += 28;
+                    BorderStyle = BorderStyle.None,
+                    ReadOnly = true,
+                    BackColor = Color.FromArgb(245, 247, 249),
+                    Dock = DockStyle.Fill,
+                    Margin = new Padding(8, 7, 8, 4),
+                    TabStop = true,
+                }, 1, i);
             }
+            form.Controls.Add(infoTable);
+            y += infoTable.Height + 16;
+
+            string copyDetailsText = Lang.Current switch
+            {
+                AppLanguage.English => "Copy details",
+                AppLanguage.TraditionalChinese => "複製資訊",
+                AppLanguage.TraditionalChineseHk => "複製資料",
+                _ => "复制详情",
+            };
+            string copiedText = Lang.Current switch
+            {
+                AppLanguage.English => "Copied",
+                AppLanguage.TraditionalChinese or AppLanguage.TraditionalChineseHk => "已複製",
+                _ => "已复制",
+            };
+            var btnCopy = new Button
+            {
+                Text = copyDetailsText,
+                FlatStyle = FlatStyle.System,
+                Size = new Size(120, 35),
+                Font = new Font("Microsoft YaHei", 9F),
+                Cursor = Cursors.Hand,
+            };
+            btnCopy.Click += (_, _) =>
+            {
+                try
+                {
+                    Clipboard.SetText(string.Join(Environment.NewLine, fields.Select(f => $"{f.label}: {f.value}")));
+                    btnCopy.Text = copiedText;
+                    var timer = new System.Windows.Forms.Timer { Interval = 1400 };
+                    timer.Tick += (_, _) => { timer.Stop(); timer.Dispose(); btnCopy.Text = copyDetailsText; };
+                    timer.Start();
+                }
+                catch { }
+            };
 
             // Ping按钮
             var btnPing = new Button
@@ -412,27 +466,30 @@ namespace DhcpScanner
                 Size = new Size(120, 35),
                 Font = new Font("Microsoft YaHei", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
+                DialogResult = DialogResult.Cancel,
             };
-            btnClose.Click += (_, _) => form.Close();
 
-            int btnW = 120, btnH = 35, gap = 15;
-            var allBtns = new List<Button> { btnPing, btnWeb, btnIe, btnClose };
+            int btnW = 120, btnH = 35, gap = 10;
+            var allBtns = new List<Button> { btnCopy, btnPing, btnWeb, btnIe, btnClose };
             var visibleBtns = allBtns.Where(b => b.Visible).ToList();
-            int cols = 2;
+            int cols = Math.Min(3, visibleBtns.Count);
             int rows = (visibleBtns.Count + cols - 1) / cols;
-            int totalW = cols * btnW + (cols - 1) * gap;
-            int startX = (form.ClientSize.Width - totalW) / 2;
-            int btnY = y + 10;
+            int btnY = y;
+            form.ClientSize = new Size(form.ClientSize.Width, btnY + rows * btnH + (rows - 1) * gap + 20);
 
             for (int i = 0; i < visibleBtns.Count; i++)
             {
                 int r = i / cols;
                 int c = i % cols;
-                visibleBtns[i].Location = new Point(startX + c * (btnW + gap), btnY + r * (btnH + gap));
+                int rowCount = Math.Min(cols, visibleBtns.Count - r * cols);
+                int rowWidth = rowCount * btnW + (rowCount - 1) * gap;
+                int rowStartX = (form.ClientSize.Width - rowWidth) / 2;
+                visibleBtns[i].Location = new Point(rowStartX + c * (btnW + gap), btnY + r * (btnH + gap));
                 form.Controls.Add(visibleBtns[i]);
             }
 
-            form.Show();
+            form.CancelButton = btnClose;
+            form.ShowDialog(FindForm());
         }
     }
 }

@@ -17,7 +17,7 @@ namespace DhcpScanner
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
-            ClientSize = new Size(500, 260);
+            ClientSize = new Size(500, 360);
             BackColor = Color.White;
             DoubleBuffered = true;
             Font = new Font("Microsoft YaHei", 9F);
@@ -84,15 +84,26 @@ namespace DhcpScanner
             // 版本号
             using var verFont = new Font("Microsoft YaHei", 9.5F);
             using var verBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-            string verText = string.Format(Lang.Get("AboutVersion"), "1.4-beta2");
+            string verText = string.Format(Lang.Get("AboutVersion"), "1.4");
             g.DrawString(verText, verFont, verBrush, textX, logoY + 90);
+
+            // 功能简介
+            using var descFont = new Font("Microsoft YaHei", 8.5F);
+            using var descBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
+            int descY = logoY + 120;
+            string[] features = Lang.Get("AboutFeatures").Split('|');
+            foreach (var feat in features)
+            {
+                g.DrawString($"  {feat}", descFont, descBrush, textX, descY);
+                descY += 18;
+            }
 
             // 版权（底部居中）
             using var copyFont = new Font("Microsoft YaHei", 8.5F);
             using var copyBrush = new SolidBrush(Color.FromArgb(190, 190, 190));
             string copyText = $"Copyright © {DateTime.Now.Year}";
             var copySize = g.MeasureString(copyText, copyFont);
-            g.DrawString(copyText, copyFont, copyBrush, cx - copySize.Width / 2, 220);
+            g.DrawString(copyText, copyFont, copyBrush, cx - copySize.Width / 2, 320);
         }
 
         /// <summary>

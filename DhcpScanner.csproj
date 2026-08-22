@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>LanIPScanner</AssemblyName>
     <RootNamespace>DhcpScanner</RootNamespace>
-    <Version>1.4-beta2</Version>
+    <Version>1.4</Version>
     <Product>局域网设备扫描工具</Product>
     <Company>LanIPScanner</Company>
     <Description>用于扫描局域网中的设备和DHCP服务器</Description>

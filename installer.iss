@@ -5,8 +5,8 @@
 
 #define MyAppName      "局域网设备扫描工具"
 #define MyAppNameEn    "LanIPScanner"
-#define MyAppVersion   "1.4-beta2"
-#define MyAppFileVersion "1.4.0.2"
+#define MyAppVersion   "1.4"
+#define MyAppFileVersion "1.4.0.0"
 #define MyAppPublisher "LanIPScanner"
 #define MyAppExeName   "LanIPScanner.exe"
 

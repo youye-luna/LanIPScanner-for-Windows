@@ -140,6 +140,7 @@ namespace DhcpScanner
             ["AboutTitle"] = "关于",
             ["AboutVersion"] = "版本号: {0}",
             ["AboutCreator"] = "创作者: {0}",
+            ["AboutFeatures"] = "扫描局域网在线设备|检测DHCP服务器|多网段自动分组|导出扫描结果|多语言界面支持",
 
             // 扫描历史
             ["HistoryTitle"] = "扫描历史",
@@ -271,6 +272,7 @@ namespace DhcpScanner
             ["AboutTitle"] = "About",
             ["AboutVersion"] = "Version: {0}",
             ["AboutCreator"] = "Creator: {0}",
+            ["AboutFeatures"] = "Scan LAN online devices|Detect DHCP servers|Auto-group by subnet|Export scan results|Multi-language UI support",
 
             // Scan history
             ["HistoryTitle"] = "Scan History",
@@ -402,6 +404,7 @@ namespace DhcpScanner
             ["AboutTitle"] = "關於",
             ["AboutVersion"] = "版本號: {0}",
             ["AboutCreator"] = "創作者: {0}",
+            ["AboutFeatures"] = "掃描區域網路線上裝置|偵測DHCP伺服器|多網段自動分組|匯出掃描結果|多語言介面支援",
 
             // 掃描歷史
             ["HistoryTitle"] = "掃描歷史",
@@ -533,6 +536,7 @@ namespace DhcpScanner
             ["AboutTitle"] = "關於",
             ["AboutVersion"] = "版本號: {0}",
             ["AboutCreator"] = "創作者: {0}",
+            ["AboutFeatures"] = "掃描區域網絡線上裝置|偵測DHCP伺服器|多網段自動分組|匯出掃描結果|多語言介面支援",
 
             // 掃描歷史
             ["HistoryTitle"] = "掃描歷史",

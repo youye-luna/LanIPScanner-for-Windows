@@ -8,11 +8,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-#region debug-point debug-reporter:原生异步HTTP日志上报依赖
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-#endregion
 
 namespace DhcpScanner
 {
@@ -51,32 +46,6 @@ namespace DhcpScanner
         private readonly object _lock = new();
         private CancellationTokenSource _cancellationTokenSource;
         private bool _isScanning;
-
-        #region debug-point debug-reporter:吞掉失败的异步HTTP日志上报
-        private static readonly HttpClient DebugHttpClient = new();
-
-        private static async Task ReportDebugAsync(string hypothesisId, string location, string message, object data)
-        {
-            try
-            {
-                var payload = JsonSerializer.Serialize(new
-                {
-                    sessionId = "three-routers-missing",
-                    runId = "post-fix",
-                    hypothesisId,
-                    location,
-                    msg = "[DEBUG] " + message,
-                    data,
-                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                });
-                using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-                using var response = await DebugHttpClient.PostAsync("http://127.0.0.1:7777/event", content).ConfigureAwait(false);
-            }
-            catch
-            {
-            }
-        }
-        #endregion
 
         public event EventHandler<DhcpServerInfo>? ServerFound;
         public event EventHandler<int>? ScanProgress;
@@ -240,16 +209,6 @@ namespace DhcpScanner
                     }
                 }
 
-                #region debug-point probe-state:记录Ping和TCP存活探测结果
-                _ = ReportDebugAsync("probe-state", "DhcpScanner.ScanSingleIpAsync:after-liveness-probe", "存活探测完成", new
-                {
-                    ip,
-                    pingSuccess = reply?.Status == IPStatus.Success,
-                    isActive = serverInfo.IsActive,
-                    activePorts = activePorts.ToArray()
-                });
-                #endregion
-
                 if (serverInfo.IsActive)
                 {
                     var macTask = GetMacAddressAsync(ip);
@@ -257,14 +216,6 @@ namespace DhcpScanner
                     await Task.WhenAll(macTask, hostTask).ConfigureAwait(false);
                     serverInfo.MacAddress = await macTask;
                     serverInfo.HostName = await hostTask;
-                    #region debug-point identity-state:记录MAC和主机名
-                    _ = ReportDebugAsync("identity-state", "DhcpScanner.ScanSingleIpAsync:after-identity", "身份信息获取完成", new
-                    {
-                        ip,
-                        hostname = serverInfo.HostName,
-                        mac = serverInfo.MacAddress
-                    });
-                    #endregion
                     serverInfo.IsDhcpServer = await IsLikelyRouterOrDhcp(ip, serverInfo.HostName, activePorts, cancellationToken);
                 }
             }
@@ -389,38 +340,10 @@ namespace DhcpScanner
                 bool managementPort = activePorts.Contains(80) || activePorts.Contains(443) || activePorts.Contains(8080) || activePorts.Contains(8443);
                 if (gateway || explicitRouterName)
                 {
-                    #region debug-point router-classification:记录路由器或DHCP判定依据和结果
-                    _ = ReportDebugAsync("router-classification", "DhcpScanner.IsLikelyRouterOrDhcp:decision", "路由器或DHCP判定完成", new
-                    {
-                        ip,
-                        gatewayIp,
-                        hostname = hostName,
-                        activePorts = activePorts.ToArray(),
-                        gateway,
-                        explicitRouterName,
-                        managementPort,
-                        result = true,
-                        reason = gateway ? "gateway" : "explicitRouterName"
-                    });
-                    #endregion
                     return true;
                 }
 
                 bool result = managementPort && activePorts.Contains(53);
-                #region debug-point router-classification:记录路由器或DHCP判定依据和结果
-                _ = ReportDebugAsync("router-classification", "DhcpScanner.IsLikelyRouterOrDhcp:decision", "路由器或DHCP判定完成", new
-                {
-                    ip,
-                    gatewayIp,
-                    hostname = hostName,
-                    activePorts = activePorts.ToArray(),
-                    gateway,
-                    explicitRouterName,
-                    managementPort,
-                    result,
-                    reason = result ? "managementPortAndDhcpPort" : "no-router-signal"
-                });
-                #endregion
                 return result;
             }
             catch (OperationCanceledException)
@@ -903,14 +826,6 @@ namespace DhcpScanner
                             if (gateway.Address.AddressFamily == AddressFamily.InterNetwork)
                             {
                                 string gatewayIp = gateway.Address.ToString();
-                                #region debug-point gateway-candidates:记录网卡和网关候选
-                                _ = ReportDebugAsync("gateway-candidates", "DhcpScanner.GetGatewayIp:gateway-enumeration", "枚举到网卡网关候选", new
-                                {
-                                    interfaceName = iface.Name,
-                                    interfaceDescription = iface.Description,
-                                    gateway = gatewayIp
-                                });
-                                #endregion
                                 return gatewayIp;
                             }
                         }
