@@ -22,3 +22,8 @@ Windows 10~11
 有建议或bug：[提issues](https://github.com/youye-luna/LanIPScanner/issues)<br>
 不喜勿喷<br>
 本人是真的不太会编程
+
+## 求赞助
+给点吧，求求了，有点用不起AI了
+
+<img width="500" height="500" alt="3269a2a7a10c377704db23f933f21ef7" src="https://github.com/user-attachments/assets/2c5fff8f-13f9-46a9-bd44-a8649324d2f3" />
