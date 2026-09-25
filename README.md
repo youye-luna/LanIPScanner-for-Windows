@@ -16,7 +16,7 @@ Windows 10~11
 未随程序分发 Npcap。未安装 Npcap 时 nmap 自动退化为 connect() 模式，功能可用但速度较慢、拿不到 MAC 地址。
 ## 软件截图（2026-08-04拍摄）
 <img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/c49a4da0-c8bd-4b72-8e7c-8d6e94f0b65c" />
-
+<img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/95b708c1-3965-4b24-b2b3-4b0ac9a949f5" />
 
 
 ## 结尾
