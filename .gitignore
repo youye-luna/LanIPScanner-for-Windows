@@ -1,9 +1,8 @@
 ## Build output
-bin/
-obj/
-out/
-publish/
-installer_output/
+build/
+release/
+*.exe
+*.zip
 
 ## IDE
 .vs/

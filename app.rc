@@ -1,0 +1,27 @@
+IDI_ICON1 ICON "app.ico"
+
+1 VERSIONINFO
+FILEVERSION 1,5,0,0
+PRODUCTVERSION 1,5,0,0
+FILEOS 0x40004L
+FILETYPE 0x1L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404B0"
+        BEGIN
+            VALUE "CompanyName", "youye-luna"
+            VALUE "FileDescription", "局域网设备扫描工具"
+            VALUE "FileVersion", "1.5-beta"
+            VALUE "InternalName", "LanIPScanner"
+            VALUE "LegalCopyright", "Copyright (C) 2026 youye-luna"
+            VALUE "OriginalFilename", "LanIPScanner.exe"
+            VALUE "ProductName", "局域网设备扫描工具"
+            VALUE "ProductVersion", "1.5-beta"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
