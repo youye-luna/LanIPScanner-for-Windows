@@ -15,10 +15,7 @@ Windows 10~11
 其许可文件位于 release 目录下的 `nmap/LICENSE` 与 `nmap/3rd-party-licenses.txt`，版权归 nmap 项目所有。<br>
 未随程序分发 Npcap。未安装 Npcap 时 nmap 自动退化为 connect() 模式，功能可用但速度较慢、拿不到 MAC 地址。
 ## 软件截图（2026-08-04拍摄）
-<img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/dc33ee63-5ec7-4235-b51d-8de6ba82e605" />
-<img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/4f3cfd90-c9be-4e92-a88e-806945115069" />
-<img width="1501" height="866" alt="图片" src="https://github.com/user-attachments/assets/b2dc53d1-6c59-460c-8492-ccc516f8e9c7" />
-<img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/ec055fa4-7229-4edb-9c50-c5a58c91d162" />
+<img width="1202" height="832" alt="图片" src="https://github.com/user-attachments/assets/c49a4da0-c8bd-4b72-8e7c-8d6e94f0b65c" />
 
 
 
