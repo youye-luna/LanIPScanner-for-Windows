@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("LanIPScanner"));
-    QApplication::setApplicationVersion(QStringLiteral("1.5-beta"));
+    QApplication::setApplicationVersion(QStringLiteral("1.5-beta2"));
     QApplication::setWindowIcon(QIcon(QStringLiteral(":/app.ico")));
     app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
 

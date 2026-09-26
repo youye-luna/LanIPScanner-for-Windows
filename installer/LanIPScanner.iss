@@ -6,7 +6,7 @@
 ; ===================================================================
 
 #define MyAppName "局域网扫描工具"
-#define MyAppVersion "1.5-beta"
+#define MyAppVersion "1.5-beta2"
 #define MyAppExeName "LanIPScanner.exe"
 
 [Setup]
@@ -14,7 +14,7 @@ AppId={{8B2D9E4C-3A71-4C6E-9F5B-52A61D9C4E01}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=youye-luna
-DefaultDirName=J:\LanIPScanner
+DefaultDirName={code:GetDefaultDir}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
@@ -54,6 +54,14 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\nmap\npcap-1.88.exe"; Description: "安装 Npcap 驱动（nmap 扫描所需，扫描更快并可获取 MAC）"; Flags: postinstall shellexec skipifsilent; Check: not IsNpcapInstalled
 
 [Code]
+function GetDefaultDir(Param: string): string;
+begin
+  if DirExists('D:\') then
+    Result := 'D:\LanIPScanner'
+  else
+    Result := 'C:\LanIPScanner';
+end;
+
 function IsNpcapInstalled(): Boolean;
 begin
   Result := FileExists(ExpandConstant('{sys}\Npcap\npcap.sys')) or

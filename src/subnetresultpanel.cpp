@@ -22,6 +22,8 @@
 #include <QTableWidgetItem>
 #include <QTimer>
 #include <QUrl>
+#include <qt_windows.h>
+#include <string>
 
 namespace
 {
@@ -344,12 +346,16 @@ void SubnetResultPanel::showDetailDialog(int row)
     const QString pingText =
         (isActive && pingMs >= 0) ? QStringLiteral("%1 ms").arg(pingMs) : QStringLiteral("-");
 
-    QDialog dialog(window());
-    dialog.setWindowTitle(Lang::fmt(QStringLiteral("DeviceDetail"), ip));
-    dialog.setStyleSheet(QStringLiteral("QDialog { background-color: white; }"));
+    // 非模态显示：详情窗口不阻塞主窗口，可边看详情边继续操作
+    QDialog *dialog = new QDialog(window());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setModal(false);
+    dialog->setWindowModality(Qt::NonModal);
+    dialog->setWindowTitle(Lang::fmt(QStringLiteral("DeviceDetail"), ip));
+    dialog->setStyleSheet(QStringLiteral("QDialog { background-color: white; }"));
 
     // 顶部状态色条
-    QWidget *colorBar = new QWidget(&dialog);
+    QWidget *colorBar = new QWidget(dialog);
     colorBar->setGeometry(0, 0, 480, 6);
     colorBar->setAutoFillBackground(true);
     QPalette barPalette = colorBar->palette();
@@ -357,7 +363,7 @@ void SubnetResultPanel::showDetailDialog(int row)
     colorBar->setPalette(barPalette);
 
     // 标题
-    QLabel *lblTitle = new QLabel(ip, &dialog);
+    QLabel *lblTitle = new QLabel(ip, dialog);
     QFont titleFont = m_grid->font();
     titleFont.setPointSizeF(14.0);
     titleFont.setBold(true);
@@ -367,7 +373,7 @@ void SubnetResultPanel::showDetailDialog(int row)
     lblTitle->move(20, 20);
 
     // 状态标签
-    QLabel *lblStatusTag = new QLabel(&dialog);
+    QLabel *lblStatusTag = new QLabel(dialog);
     QStringList statusParts;
     if (isActive)
         statusParts.append(Lang::get(QStringLiteral("Online")));
@@ -411,7 +417,7 @@ void SubnetResultPanel::showDetailDialog(int row)
     const int rowHeight = 34;
     const int infoHeight = 6 * rowHeight;
 
-    QWidget *infoTable = new QWidget(&dialog);
+    QWidget *infoTable = new QWidget(dialog);
     infoTable->setGeometry(20, infoTop, 440, infoHeight);
     infoTable->setStyleSheet(QStringLiteral("background-color: rgb(245, 247, 249);"));
 
@@ -491,32 +497,32 @@ void SubnetResultPanel::showDetailDialog(int row)
     QFont boldButtonFont = buttonFont;
     boldButtonFont.setBold(true);
 
-    QPushButton *btnCopy = new QPushButton(copyDetailsText, &dialog);
+    QPushButton *btnCopy = new QPushButton(copyDetailsText, dialog);
     btnCopy->setFixedSize(btnW, btnH);
     btnCopy->setCursor(Qt::PointingHandCursor);
     btnCopy->setFont(buttonFont);
 
-    QPushButton *btnPing = new QPushButton(QStringLiteral("Ping"), &dialog);
+    QPushButton *btnPing = new QPushButton(QStringLiteral("Ping"), dialog);
     btnPing->setFixedSize(btnW, btnH);
     btnPing->setCursor(Qt::PointingHandCursor);
     btnPing->setFont(boldButtonFont);
 
-    QPushButton *btnWeb = new QPushButton(Lang::get(QStringLiteral("AccessAdmin")), &dialog);
+    QPushButton *btnWeb = new QPushButton(Lang::get(QStringLiteral("AccessAdmin")), dialog);
     btnWeb->setFixedSize(btnW, btnH);
     btnWeb->setCursor(Qt::PointingHandCursor);
     btnWeb->setFont(boldButtonFont);
 
-    QPushButton *btnIe = new QPushButton(Lang::get(QStringLiteral("IeAccess")), &dialog);
+    QPushButton *btnIe = new QPushButton(Lang::get(QStringLiteral("IeAccess")), dialog);
     btnIe->setFixedSize(btnW, btnH);
     btnIe->setCursor(Qt::PointingHandCursor);
     btnIe->setFont(boldButtonFont);
 
-    QPushButton *btnClose = new QPushButton(Lang::get(QStringLiteral("Close")), &dialog);
+    QPushButton *btnClose = new QPushButton(Lang::get(QStringLiteral("Close")), dialog);
     btnClose->setFixedSize(btnW, btnH);
     btnClose->setCursor(Qt::PointingHandCursor);
     btnClose->setFont(boldButtonFont);
 
-    connect(btnCopy, &QPushButton::clicked, &dialog,
+    connect(btnCopy, &QPushButton::clicked, dialog,
             [fields, btnCopy, copyDetailsText, copiedText]() {
                 QStringList lines;
                 for (const Field &field : fields)
@@ -531,21 +537,37 @@ void SubnetResultPanel::showDetailDialog(int row)
                 });
             });
 
-    connect(btnPing, &QPushButton::clicked, &dialog, [ip]() {
-        QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                QStringList{QStringLiteral("/k"), QStringLiteral("ping"), ip,
-                                            QStringLiteral("-t")});
+    connect(btnPing, &QPushButton::clicked, dialog, [ip]() {
+        // 本程序是 GUI 程序、自身没有控制台。Qt 启动子进程时会检测到这一点并给
+        // 子进程附加 CREATE_NO_WINDOW，导致 cmd 控制台窗口被“隐藏创建”（进程在跑，
+        // 却看不到窗口）。这里绕开 Qt 的标志处理，直接调用 Win32 API 并显式指定
+        // CREATE_NEW_CONSOLE，确保 ping 窗口正常弹出。
+        std::wstring command = QStringLiteral("cmd.exe /k ping %1 -t").arg(ip).toStdWString();
+        command.push_back(L'\0'); // CreateProcessW 需要可写、以 null 结尾的命令行缓冲
+
+        STARTUPINFOW startupInfo;
+        ZeroMemory(&startupInfo, sizeof(startupInfo));
+        startupInfo.cb = sizeof(startupInfo);
+        PROCESS_INFORMATION processInfo;
+        ZeroMemory(&processInfo, sizeof(processInfo));
+
+        if (CreateProcessW(nullptr, command.data(), nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
+                           nullptr, nullptr, &startupInfo, &processInfo))
+        {
+            CloseHandle(processInfo.hThread);
+            CloseHandle(processInfo.hProcess);
+        }
     });
 
-    connect(btnWeb, &QPushButton::clicked, &dialog,
+    connect(btnWeb, &QPushButton::clicked, dialog,
             [ip]() { QDesktopServices::openUrl(QUrl(QStringLiteral("http://") + ip)); });
 
-    connect(btnIe, &QPushButton::clicked, &dialog, [ip]() {
+    connect(btnIe, &QPushButton::clicked, dialog, [dialog, ip]() {
         QSettings ieReg(QStringLiteral("HKEY_CLASSES_ROOT\\InternetExplorer.Application"),
                         QSettings::NativeFormat);
         if (ieReg.allKeys().isEmpty() && ieReg.childGroups().isEmpty())
         {
-            QMessageBox::information(nullptr, Lang::get(QStringLiteral("Tip")),
+            QMessageBox::information(dialog, Lang::get(QStringLiteral("Tip")),
                                      Lang::get(QStringLiteral("IeNotRegistered")));
             return;
         }
@@ -554,12 +576,12 @@ void SubnetResultPanel::showDetailDialog(int row)
                                      QStringList{QStringLiteral("http://") + ip}))
         {
             QMessageBox::information(
-                nullptr, Lang::get(QStringLiteral("Tip")),
+                dialog, Lang::get(QStringLiteral("Tip")),
                 Lang::fmt(QStringLiteral("IeLaunchFailed"), QStringLiteral("iexplore.exe")));
         }
     });
 
-    connect(btnClose, &QPushButton::clicked, &dialog, &QDialog::reject);
+    connect(btnClose, &QPushButton::clicked, dialog, &QDialog::reject);
 
     const QList<QPushButton *> allButtons{btnCopy, btnPing, btnWeb, btnIe, btnClose};
     QList<QPushButton *> visibleButtons;
@@ -573,7 +595,7 @@ void SubnetResultPanel::showDetailDialog(int row)
 
     const int columns = qMin(3, visibleButtons.size());
     const int rows = (visibleButtons.size() + columns - 1) / columns;
-    dialog.setFixedSize(480, y + rows * btnH + (rows - 1) * gap + 20);
+    dialog->setFixedSize(480, y + rows * btnH + (rows - 1) * gap + 20);
 
     for (int i = 0; i < visibleButtons.size(); ++i)
     {
@@ -586,5 +608,7 @@ void SubnetResultPanel::showDetailDialog(int row)
                                           btnH);
     }
 
-    dialog.exec();
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
 }

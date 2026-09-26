@@ -23,7 +23,8 @@
 namespace
 {
 /// 传给 nmap 的 TCP 探测端口（无 Npcap 时 nmap 会退化为 connect() 模式）
-const char *kProbePorts = "80,443,445,22,8080";
+/// 只保留最常见的 Web / HTTPS / Windows 共享端口：端口越少，静默网段的等待时间越短
+const char *kProbePorts = "80,443,445";
 /// 单次 nmap 调用的硬超时，避免子进程异常时长时间卡住
 const int kScanTimeoutMs = 20 * 60 * 1000;
 /// 等待子进程退出的时间
@@ -146,6 +147,9 @@ QVector<NmapHost> NmapRunner::scanHosts(const QStringList &ipList,
         QStringLiteral("-n"),                         // 不做反向 DNS（交给 NetUtils 解析，避免 nmap 侧等待）
         QStringLiteral("-oX"), QStringLiteral("-"),   // XML 输出到标准输出
         QStringLiteral("--stats-every"), QStringLiteral("1s"),
+        QStringLiteral("-T5"),                        // 快速时序：静默网段不必按默认 T3 逐 IP 死等
+        QStringLiteral("--max-retries"), QStringLiteral("0"),      // 不重传，静默网段每个 IP 只等一轮
+        QStringLiteral("--host-timeout"), QStringLiteral("3s"),    // 单主机硬上限，避免个别主机卡住整体进度
         QStringLiteral("-PS%1").arg(QLatin1String(kProbePorts)),
         QStringLiteral("-iL"), QStringLiteral("-")};  // 目标列表从标准输入读取，避免命令行过长
 

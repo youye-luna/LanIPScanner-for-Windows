@@ -12,12 +12,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "youye-luna"
             VALUE "FileDescription", "局域网设备扫描工具"
-            VALUE "FileVersion", "1.5-beta"
+            VALUE "FileVersion", "1.5-beta2"
             VALUE "InternalName", "LanIPScanner"
             VALUE "LegalCopyright", "Copyright (C) 2026 youye-luna"
             VALUE "OriginalFilename", "LanIPScanner.exe"
             VALUE "ProductName", "局域网设备扫描工具"
-            VALUE "ProductVersion", "1.5-beta"
+            VALUE "ProductVersion", "1.5-beta2"
         END
     END
     BLOCK "VarFileInfo"

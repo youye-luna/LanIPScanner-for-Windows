@@ -24,8 +24,8 @@ const int kClientWidth = 460;
 const int kClientHeight = 500;
 
 const QString kLangSimpleChinese = QStringLiteral("简体中文");
-const QString kLangTraditionalTw = QStringLiteral("繁體中文（台灣）");
-const QString kLangTraditionalHk = QStringLiteral("繁體中文（香港/澳門）");
+const QString kLangTraditionalTw = QStringLiteral("繁體中文（中国台湾）");
+const QString kLangTraditionalHk = QStringLiteral("繁體中文（中国香港/澳门）");
 const QString kLangEnglish = QStringLiteral("English");
 
 /// 枚举 → 下拉显示文本

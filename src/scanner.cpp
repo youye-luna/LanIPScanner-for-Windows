@@ -11,6 +11,7 @@
 #include "netutils.h"
 #include "nmaprunner.h"
 
+#include <QDebug>
 #include <QHash>
 #include <QRunnable>
 #include <QSet>
@@ -24,6 +25,69 @@ namespace
 /// 主机名解析超时与 ARP 补齐时测量延迟的 ping 超时
 const int kHostNameTimeoutMs = 800;
 const int kLatencyPingTimeoutMs = 400;
+/// 复核 nmap 上线判定时的 ICMP 回显超时
+const int kVerifyPingTimeoutMs = 400;
+
+/// 复核 nmap 上报的在线主机，剔除「幽灵主机」。
+///
+/// 无管理员权限时 nmap 退化为 TCP connect() 模式，「连接被拒绝」同样算主机在线。
+/// 跨网段探测时上游路由器会替不存在的地址代答 RST（实测 192.168.32.0/24 整段
+/// 253 个地址全部被判定在线），因此需要二次确认：
+///   - 本机 ARP 邻居表命中 → 二层直连证据，直接采信；
+///   - 本机自身地址 → 必然在线；
+///   - 其余地址要求 ICMP 回显成功。
+/// 上述伪造地址不响应 ICMP 回显（返回 Destination port unreachable），会被剔除。
+QVector<NmapHost> confirmAliveHosts(const QVector<NmapHost> &hosts, int maxParallelism,
+                                    const QSharedPointer<ScanCancelToken> &token)
+{
+    if (hosts.isEmpty())
+        return hosts;
+
+    const QHash<QString, QString> arpTable = NetUtils::readArpTable();
+    const QString localIp = NetUtils::localIpv4Address();
+
+    const int hostCount = hosts.size();
+    QVector<bool> keep(hostCount, false);
+    bool *keepData = keep.data();
+
+    QThreadPool pool;
+    pool.setMaxThreadCount(qMax(1, maxParallelism));
+
+    for (int i = 0; i < hostCount; ++i)
+    {
+        if (!token.isNull() && token->isCancelled())
+            break;
+
+        const QString ip = hosts.at(i).ipAddress;
+        if (arpTable.contains(ip) || (!localIp.isEmpty() && ip == localIp))
+        {
+            keepData[i] = true;
+            continue;
+        }
+
+        pool.start(QRunnable::create([ip, i, keepData]() {
+            keepData[i] = NetUtils::icmpPing(ip, kVerifyPingTimeoutMs, nullptr);
+        }));
+    }
+
+    pool.waitForDone();
+
+    QVector<NmapHost> confirmed;
+    confirmed.reserve(hostCount);
+    for (int i = 0; i < hostCount; ++i)
+    {
+        if (keepData[i])
+            confirmed.append(hosts.at(i));
+    }
+
+    if (confirmed.size() != hostCount)
+    {
+        qWarning("scanner: nmap reported %d alive host(s), %d rejected by ICMP/ARP check",
+                 hostCount, hostCount - confirmed.size());
+    }
+
+    return confirmed;
+}
 } // namespace
 
 ScanWorker::ScanWorker(const QStringList &ipList, int maxParallelism,
@@ -70,10 +134,20 @@ void ScanWorker::run()
             return;
         }
 
-        // 2) 并发补齐 nmap 未提供的主机名 / MAC / DHCP 判定（进度占后 50%）
+        // 2) 复核 nmap 的上线判定，剔除路由器代答 RST 造成的「幽灵主机」
+        const QVector<NmapHost> verifiedHosts =
+            confirmAliveHosts(aliveHosts, m_maxParallelism, m_token);
+
+        if (!m_token.isNull() && m_token->isCancelled())
+        {
+            emit cancelled();
+            return;
+        }
+
+        // 3) 并发补齐 nmap 未提供的主机名 / MAC / DHCP 判定（进度占后 50%）
         QVector<DhcpServerInfo> collected;
-        collected.reserve(aliveHosts.size());
-        for (const NmapHost &host : aliveHosts)
+        collected.reserve(verifiedHosts.size());
+        for (const NmapHost &host : verifiedHosts)
         {
             DhcpServerInfo info;
             info.ipAddress = host.ipAddress;
@@ -124,7 +198,7 @@ void ScanWorker::run()
             return;
         }
 
-        // 3) 为本次扫描过但未发现设备的地址补一条「无设备」记录。
+        // 4) 为本次扫描过但未发现设备的地址补一条「无设备」记录。
         //    nmap 只返回在线主机，若不补齐，IP 分布图里这些地址会保持默认底色，
         //    与图例中「未扫描」的颜色相同，无法区分。
         {
