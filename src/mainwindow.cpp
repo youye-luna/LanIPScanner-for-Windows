@@ -1,12 +1,13 @@
 #include "mainwindow.h"
 
 #include "appsettings.h"
-#include "historydialog.h"
+#include "historypanel.h"
 #include "ipaddressedit.h"
 #include "lang.h"
 #include "netutils.h"
-#include "settingsdialog.h"
+#include "settingspanel.h"
 #include "subnetresultpanel.h"
+#include "uistyle.h"
 
 #include <QCloseEvent>
 #include <QDateTime>
@@ -23,9 +24,10 @@
 #include <QPalette>
 #include <QProgressBar>
 #include <QPushButton>
-#include <QResizeEvent>
 #include <QShowEvent>
+#include <QStackedWidget>
 #include <QStatusBar>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QTextStream>
 #include <QVBoxLayout>
@@ -79,10 +81,10 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
         const char *color;
     };
     const StatRow rows[] = {
-        {"Online", online, "rgb(33,150,243)"},      // 在线
-        {"NoDevice", noDevice, "rgb(130,135,140)"}, // 无设备
-        {"ColDhcp", router, "rgb(229,57,53)"},      // DHCP服务器
-        {"ColCamera", camera, "rgb(123,31,162)"},   // 摄像头
+        {"Online", online, "#2196f3"},    // 在线
+        {"NoDevice", noDevice, "#9e9e9e"}, // 无设备
+        {"ColDhcp", router, "#d32f2f"},    // DHCP服务器
+        {"ColCamera", camera, "#7b1fa2"},  // 摄像头
     };
 
     QDialog dialog(parent);
@@ -91,7 +93,7 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
     dialog.setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     dialog.setFixedWidth(380);
     dialog.setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
-    dialog.setStyleSheet(QStringLiteral("QDialog { background: white; }"));
+    dialog.setStyleSheet(QStringLiteral("QDialog { background-color: #ffffff; }"));
 
     // ---- 顶部：绿色对勾 + 标题 + 扫描总数 ----
     QLabel *checkIcon = new QLabel(QStringLiteral("\u2713"), &dialog);
@@ -101,17 +103,17 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
     checkFont.setBold(true);
     checkIcon->setFont(checkFont);
     checkIcon->setStyleSheet(
-        QStringLiteral("background: rgb(76,175,80); color: white; border-radius: 19px;"));
+        QStringLiteral("background-color: #4caf50; color: #ffffff; border-radius: 19px;"));
 
     QLabel *title = new QLabel(Lang::get(QStringLiteral("ScanCompletedStatus")), &dialog);
     QFont titleFont(QStringLiteral("Microsoft YaHei"), 12);
     titleFont.setBold(true);
     title->setFont(titleFont);
-    title->setStyleSheet(QStringLiteral("color: rgb(45,50,55);"));
+    title->setStyleSheet(QStringLiteral("color: #1f2329;"));
 
     QLabel *subtitle =
         new QLabel(Lang::fmt(QStringLiteral("ScanSummaryTotalIps"), totalIps), &dialog);
-    subtitle->setStyleSheet(QStringLiteral("color: rgb(140,145,150);"));
+    subtitle->setStyleSheet(QStringLiteral("color: #8a9099;"));
 
     QVBoxLayout *titleLayout = new QVBoxLayout;
     titleLayout->setContentsMargins(0, 0, 0, 0);
@@ -129,7 +131,7 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
     QWidget *card = new QWidget(&dialog);
     card->setObjectName(QStringLiteral("summaryCard"));
     card->setStyleSheet(QStringLiteral(
-        "QWidget#summaryCard { background: rgb(246,248,250); border-radius: 8px; }"));
+        "QWidget#summaryCard { background-color: #f6f8fa; border-radius: 8px; }"));
 
     QGridLayout *grid = new QGridLayout(card);
     grid->setContentsMargins(18, 14, 18, 14);
@@ -139,7 +141,7 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
     for (int i = 0; i < 4; ++i)
     {
         QLabel *name = new QLabel(Lang::get(QLatin1String(rows[i].key)), card);
-        name->setStyleSheet(QStringLiteral("color: rgb(105,110,115);"));
+        name->setStyleSheet(QStringLiteral("color: #8a9099;"));
 
         QLabel *value = new QLabel(QString::number(rows[i].value), card);
         QFont valueFont(QStringLiteral("Microsoft YaHei"), 11);
@@ -158,11 +160,7 @@ void showScanSummaryDialog(QWidget *parent, int totalIps, int online, int noDevi
     okButton->setFixedSize(96, 30);
     okButton->setCursor(Qt::PointingHandCursor);
     okButton->setDefault(true);
-    okButton->setStyleSheet(QStringLiteral(
-        "QPushButton { background: rgb(33,150,243); color: white; border: none;"
-        " border-radius: 4px; }"
-        "QPushButton:hover { background: rgb(30,136,229); }"
-        "QPushButton:pressed { background: rgb(25,118,210); }"));
+    okButton->setStyleSheet(UiStyle::primaryButtonStyle());
 
     QHBoxLayout *buttonLayout = new QHBoxLayout;
     buttonLayout->setContentsMargins(0, 0, 0, 0);
@@ -205,9 +203,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 启动时按保存配置清理过期历史记录
     ScanHistoryStore::prune();
-
-    // 初始布局按钮位置
-    layoutSearchPanel();
 }
 
 MainWindow::~MainWindow() = default;
@@ -219,75 +214,24 @@ void MainWindow::buildUi()
     setMinimumSize(1040, 700);
     applyWindowColor(this, Qt::white);
 
-    // ---------------- 搜索面板 ----------------
-    m_panelSearch = new QWidget(this);
-    m_panelSearch->setFixedHeight(112);
-    applyWindowColor(m_panelSearch, QColor(240, 244, 247));
+    const QFont labelFont = UiStyle::labelFont();
+    const QFont buttonFont = UiStyle::labelFont();
 
-    QFont labelFont(QStringLiteral("Microsoft YaHei"), 9);
-    QFont boldTitleFont(QStringLiteral("Microsoft YaHei"), 10);
-    boldTitleFont.setBold(true);
-    QFont buttonFont(QStringLiteral("Microsoft YaHei"), 9);
+    // ---------------- 页面容器（主页 / 历史 / 设置） ----------------
+    m_stack = new QStackedWidget(this);
 
-    m_labelTitle = new QLabel(m_panelSearch);
-    m_labelTitle->setFont(boldTitleFont);
-    m_labelTitle->setStyleSheet(QStringLiteral("color: rgb(50,50,50);"));
+    m_pageHome = buildHomePage();
 
-    m_labelStartIp = new QLabel(m_panelSearch);
-    m_labelStartIp->setFont(labelFont);
-    m_labelStartIp->setStyleSheet(QStringLiteral("color: rgb(60,60,60);"));
+    m_pageHistory = new HistoryPanel(m_stack);
+    connect(m_pageHistory, &HistoryPanel::recordActivated, this,
+            &MainWindow::onHistoryRecordActivated);
 
-    m_ipStart = new IpAddressEdit(m_panelSearch);
-    m_ipStart->setFont(QFont(QStringLiteral("Microsoft YaHei UI"), 9));
+    m_pageSettings = new SettingsPanel(m_stack);
+    connect(m_pageSettings, &SettingsPanel::settingsSaved, this, &MainWindow::onSettingsSaved);
 
-    m_labelTo = new QLabel(m_panelSearch);
-    m_labelTo->setFont(labelFont);
-    m_labelTo->setStyleSheet(QStringLiteral("color: rgb(120,120,120);"));
-
-    m_labelEndIp = new QLabel(m_panelSearch);
-    m_labelEndIp->setFont(labelFont);
-    m_labelEndIp->setStyleSheet(QStringLiteral("color: rgb(60,60,60);"));
-
-    m_ipEnd = new IpAddressEdit(m_panelSearch);
-    m_ipEnd->setFont(QFont(QStringLiteral("Microsoft YaHei UI"), 9));
-
-    // 默认起始/结束 IP 取本机 IP 前三段
-    QStringList parts = NetUtils::localIpv4Address().split(QLatin1Char('.'));
-    if (parts.size() != 4)
-        parts = QStringList{QStringLiteral("192"), QStringLiteral("168"),
-                            QStringLiteral("1"), QStringLiteral("1")};
-    m_ipStart->setAddress(QStringLiteral("%1.%2.%3.1").arg(parts[0], parts[1], parts[2]));
-    m_ipEnd->setAddress(QStringLiteral("%1.%2.%3.255").arg(parts[0], parts[1], parts[2]));
-
-    m_flowButtons = new QWidget(m_panelSearch);
-    QHBoxLayout *flowLayout = new QHBoxLayout(m_flowButtons);
-    flowLayout->setContentsMargins(3, 0, 3, 0);
-    flowLayout->setSpacing(6);
-
-    m_buttonScan = new QPushButton(m_flowButtons);
-    m_buttonStop = new QPushButton(m_flowButtons);
-    m_buttonClear = new QPushButton(m_flowButtons);
-    m_buttonExport = new QPushButton(m_flowButtons);
-    QPushButton *flowButtonList[] = {m_buttonScan, m_buttonStop, m_buttonClear, m_buttonExport};
-    for (QPushButton *button : flowButtonList)
-    {
-        button->setFixedSize(100, 30);
-        button->setFont(buttonFont);
-        button->setCursor(Qt::PointingHandCursor);
-        flowLayout->addWidget(button);
-    }
-    flowLayout->addStretch(1);
-    m_buttonStop->setEnabled(false);
-
-    m_buttonSettings = new QPushButton(m_panelSearch);
-    m_buttonHistory = new QPushButton(m_panelSearch);
-    QPushButton *panelButtonList[] = {m_buttonSettings, m_buttonHistory};
-    for (QPushButton *button : panelButtonList)
-    {
-        button->setFixedSize(100, 30);
-        button->setFont(buttonFont);
-        button->setCursor(Qt::PointingHandCursor);
-    }
+    m_stack->addWidget(m_pageHome);
+    m_stack->addWidget(m_pageHistory);
+    m_stack->addWidget(m_pageSettings);
 
     // ---------------- 进度（显示在 Windows 任务栏图标上） ----------------
     m_taskbarButton = new QWinTaskbarButton(this);
@@ -298,10 +242,11 @@ void MainWindow::buildUi()
     m_progressDialog->setWindowModality(Qt::ApplicationModal);
     m_progressDialog->setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     m_progressDialog->setFixedWidth(400);
+    m_progressDialog->setStyleSheet(QStringLiteral("QDialog { background-color: #ffffff; }"));
 
     m_progressRangeLabel = new QLabel(m_progressDialog);
     m_progressRangeLabel->setFont(labelFont);
-    m_progressRangeLabel->setStyleSheet(QStringLiteral("color: rgb(60,60,60);"));
+    m_progressRangeLabel->setStyleSheet(QStringLiteral("color: #1f2329;"));
 
     m_progressBar = new QProgressBar(m_progressDialog);
     m_progressBar->setRange(0, 100);
@@ -309,20 +254,18 @@ void MainWindow::buildUi()
     m_progressBar->setTextVisible(true);
     m_progressBar->setAlignment(Qt::AlignCenter);
     m_progressBar->setFixedHeight(24);
-    m_progressBar->setStyleSheet(QStringLiteral(
-        "QProgressBar { border: 1px solid rgb(190,195,200); border-radius: 4px;"
-        " background: rgb(240,244,247); text-align: center; }"
-        "QProgressBar::chunk { background: rgb(33,150,243); border-radius: 3px; }"));
+    m_progressBar->setStyleSheet(UiStyle::progressBarStyle());
 
     m_progressHintLabel = new QLabel(m_progressDialog);
     m_progressHintLabel->setFont(labelFont);
     m_progressHintLabel->setWordWrap(true);
-    m_progressHintLabel->setStyleSheet(QStringLiteral("color: rgb(120,120,120);"));
+    m_progressHintLabel->setStyleSheet(QStringLiteral("color: #8a9099;"));
 
     m_buttonStopInDialog = new QPushButton(m_progressDialog);
     m_buttonStopInDialog->setFixedSize(100, 30);
     m_buttonStopInDialog->setFont(buttonFont);
     m_buttonStopInDialog->setCursor(Qt::PointingHandCursor);
+    m_buttonStopInDialog->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     QHBoxLayout *progressButtonLayout = new QHBoxLayout;
     progressButtonLayout->setContentsMargins(0, 0, 0, 0);
@@ -340,17 +283,13 @@ void MainWindow::buildUi()
 
     connect(m_buttonStopInDialog, &QPushButton::clicked, this, &MainWindow::onStopClicked);
 
-    // ---------------- 结果标签页 ----------------
-    m_tabControlResults = new QTabWidget(this);
-    m_tabControlResults->setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
-    m_tabControlResults->setStyleSheet(
-        QStringLiteral("QTabBar::tab { padding: 4px 12px; }"));
-    m_tabControlResults->setDocumentMode(true);
-
     // ---------------- 底部状态栏 ----------------
     m_panelBottom = new QWidget(this);
+    m_panelBottom->setObjectName(QStringLiteral("bottomBar"));
+    m_panelBottom->setAttribute(Qt::WA_StyledBackground, true);
     m_panelBottom->setFixedHeight(30);
-    applyWindowColor(m_panelBottom, QColor(240, 244, 247));
+    m_panelBottom->setStyleSheet(QStringLiteral(
+        "QWidget#bottomBar { background-color: #ffffff; border-top: 1px solid #e6e8ec; }"));
 
     QStatusBar *statusBar = new QStatusBar(m_panelBottom);
     statusBar->setSizeGripEnabled(false);
@@ -373,22 +312,190 @@ void MainWindow::buildUi()
     QVBoxLayout *rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
-    rootLayout->addWidget(m_panelSearch);
-    rootLayout->addWidget(m_tabControlResults, 1);
+    rootLayout->addWidget(buildNavBar());
+    rootLayout->addWidget(m_stack, 1);
     rootLayout->addWidget(m_panelBottom);
 
-    // ---------------- 信号连接 ----------------
+    switchToPage(PageHome);
+}
+
+QWidget *MainWindow::buildNavBar()
+{
+    m_navBar = new QWidget(this);
+    m_navBar->setObjectName(QStringLiteral("navBar"));
+    m_navBar->setAttribute(Qt::WA_StyledBackground, true);
+    m_navBar->setFixedHeight(104);
+    m_navBar->setStyleSheet(QStringLiteral(
+        "QWidget#navBar { background-color: #ffffff; border-bottom: 1px solid #e6e8ec; }"));
+
+    m_navTitle = new QLabel(Lang::get(QStringLiteral("FormTitle")), m_navBar);
+    QFont titleFont = UiStyle::pageTitleFont();
+    titleFont.setPointSize(14);
+    m_navTitle->setFont(titleFont);
+    m_navTitle->setStyleSheet(QStringLiteral("color: #1f2329;"));
+
+    m_navHome = new QPushButton(m_navBar);
+    m_navHistory = new QPushButton(m_navBar);
+    m_navSettings = new QPushButton(m_navBar);
+    QPushButton *navs[] = {m_navHome, m_navHistory, m_navSettings};
+    for (QPushButton *button : navs)
+    {
+        QFont navFont = UiStyle::labelFont();
+        navFont.setPointSize(11);
+        button->setFont(navFont);
+        button->setCheckable(true);
+        button->setAutoDefault(false);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setStyleSheet(UiStyle::navButtonStyle());
+    }
+
+    // 标题在上、导航按钮在下，两行靠左排列
+    QVBoxLayout *layout = new QVBoxLayout(m_navBar);
+    layout->setContentsMargins(20, 14, 20, 14);
+    layout->setSpacing(8);
+
+    QHBoxLayout *titleRow = new QHBoxLayout;
+    titleRow->setContentsMargins(0, 0, 0, 0);
+    titleRow->addWidget(m_navTitle);
+    titleRow->addStretch(1);
+    layout->addLayout(titleRow);
+
+    QHBoxLayout *buttonRow = new QHBoxLayout;
+    buttonRow->setContentsMargins(0, 0, 0, 0);
+    buttonRow->setSpacing(14);
+    buttonRow->addWidget(m_navHome);
+    buttonRow->addWidget(m_navHistory);
+    buttonRow->addWidget(m_navSettings);
+    buttonRow->addStretch(1);
+    layout->addLayout(buttonRow);
+
+    connect(m_navHome, &QPushButton::clicked, this, [this] { switchToPage(PageHome); });
+    connect(m_navHistory, &QPushButton::clicked, this, [this] { switchToPage(PageHistory); });
+    connect(m_navSettings, &QPushButton::clicked, this, [this] { switchToPage(PageSettings); });
+
+    return m_navBar;
+}
+
+QWidget *MainWindow::buildHomePage()
+{
+    const QFont labelFont = UiStyle::labelFont();
+
+    QWidget *page = new QWidget(m_stack);
+    UiStyle::applyPageBackground(page);
+
+    QVBoxLayout *layout = new QVBoxLayout(page);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(12);
+
+    // ---------------- 搜索卡片 ----------------
+    QWidget *searchCard = UiStyle::makeCard(page);
+    QVBoxLayout *cardLayout = new QVBoxLayout(searchCard);
+    cardLayout->setContentsMargins(16, 14, 16, 14);
+    cardLayout->setSpacing(10);
+
+    m_labelTitle = new QLabel(searchCard);
+    m_labelTitle->setFont(UiStyle::sectionTitleFont());
+    m_labelTitle->setStyleSheet(QStringLiteral("color: #1f2329;"));
+    cardLayout->addWidget(m_labelTitle);
+
+    m_labelStartIp = new QLabel(searchCard);
+    m_labelTo = new QLabel(searchCard);
+    m_labelEndIp = new QLabel(searchCard);
+    QLabel *labels[] = {m_labelStartIp, m_labelTo, m_labelEndIp};
+    for (QLabel *label : labels)
+    {
+        label->setFont(labelFont);
+        label->setStyleSheet(QStringLiteral("color: #5b6470;"));
+    }
+
+    m_ipStart = new IpAddressEdit(searchCard);
+    m_ipEnd = new IpAddressEdit(searchCard);
+    m_ipStart->setFont(labelFont);
+    m_ipEnd->setFont(labelFont);
+
+    // 用本机 IPv4 所在的 /24 网段预填扫描范围（192.168.1.1 ~ 192.168.1.255）
+    const QStringList localParts = NetUtils::localIpv4Address().split(QLatin1Char('.'));
+    if (localParts.size() >= 3)
+    {
+        const QString prefix = QStringLiteral("%1.%2.%3")
+                                   .arg(localParts.at(0), localParts.at(1), localParts.at(2));
+        m_ipStart->setAddress(prefix + QStringLiteral(".1"));
+        m_ipEnd->setAddress(prefix + QStringLiteral(".255"));
+    }
+
+    QHBoxLayout *rangeLayout = new QHBoxLayout;
+    rangeLayout->setContentsMargins(0, 0, 0, 0);
+    rangeLayout->setSpacing(8);
+    rangeLayout->addWidget(m_labelStartIp);
+    rangeLayout->addWidget(m_ipStart);
+    rangeLayout->addWidget(m_labelTo);
+    rangeLayout->addWidget(m_labelEndIp);
+    rangeLayout->addWidget(m_ipEnd);
+    rangeLayout->addStretch(1);
+    cardLayout->addLayout(rangeLayout);
+
+    m_buttonScan = new QPushButton(searchCard);
+    m_buttonStop = new QPushButton(searchCard);
+    m_buttonClear = new QPushButton(searchCard);
+    m_buttonExport = new QPushButton(searchCard);
+    m_buttonScan->setStyleSheet(UiStyle::primaryButtonStyle());
+    m_buttonStop->setStyleSheet(UiStyle::secondaryButtonStyle());
+    m_buttonClear->setStyleSheet(UiStyle::secondaryButtonStyle());
+    m_buttonExport->setStyleSheet(UiStyle::secondaryButtonStyle());
+
+    QPushButton *buttons[] = {m_buttonScan, m_buttonStop, m_buttonClear, m_buttonExport};
+    for (QPushButton *button : buttons)
+    {
+        button->setFont(labelFont);
+        button->setFixedSize(UiStyle::kButtonWidth, UiStyle::kButtonHeight);
+        button->setCursor(Qt::PointingHandCursor);
+    }
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    buttonLayout->setSpacing(8);
+    buttonLayout->addWidget(m_buttonScan);
+    buttonLayout->addWidget(m_buttonStop);
+    buttonLayout->addWidget(m_buttonClear);
+    buttonLayout->addWidget(m_buttonExport);
+    buttonLayout->addStretch(1);
+    cardLayout->addLayout(buttonLayout);
+
+    layout->addWidget(searchCard);
+
+    // ---------------- 结果标签页 ----------------
+    m_tabControlResults = new QTabWidget(page);
+    m_tabControlResults->setFont(labelFont);
+    m_tabControlResults->setDocumentMode(true);
+    // 关掉 QTabBar 默认在标签条顶部绘制的那条深色底边线
+    m_tabControlResults->tabBar()->setDrawBase(false);
+    m_tabControlResults->setStyleSheet(QStringLiteral(
+        "QTabWidget::pane { border: 1px solid #e6e8ec; border-radius: 8px;"
+        " background-color: #ffffff; top: -1px; }"
+        "QTabBar::tab { background-color: #eef1f5; color: #5b6470; border: 1px solid #e6e8ec;"
+        " border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px;"
+        " padding: 5px 14px; margin-right: 3px; }"
+        "QTabBar::tab:selected { background-color: #ffffff; color: #1e88e5;"
+        " font-weight: bold; }"
+        "QTabBar::tab:hover:!selected { background-color: #e5eaf0; }"));
+    layout->addWidget(m_tabControlResults, 1);
+
     connect(m_buttonScan, &QPushButton::clicked, this, &MainWindow::onScanClicked);
     connect(m_buttonStop, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     connect(m_buttonClear, &QPushButton::clicked, this, &MainWindow::onClearClicked);
     connect(m_buttonExport, &QPushButton::clicked, this, &MainWindow::onExportClicked);
-    connect(m_buttonSettings, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
-    connect(m_buttonHistory, &QPushButton::clicked, this, &MainWindow::onHistoryClicked);
+
+    return page;
 }
 
 void MainWindow::applyLanguage()
 {
     setWindowTitle(Lang::get(QStringLiteral("FormTitle")));
+    m_navTitle->setText(Lang::get(QStringLiteral("FormTitle")));
+    m_navHome->setText(Lang::get(QStringLiteral("Home")));
+    m_navHistory->setText(Lang::get(QStringLiteral("History")));
+    m_navSettings->setText(Lang::get(QStringLiteral("Settings")));
+
     m_labelTitle->setText(Lang::get(QStringLiteral("ScanRangeTitle")));
     m_labelStartIp->setText(Lang::get(QStringLiteral("StartIp")));
     m_labelTo->setText(Lang::get(QStringLiteral("To")));
@@ -397,8 +504,6 @@ void MainWindow::applyLanguage()
     m_buttonStop->setText(Lang::get(QStringLiteral("StopScan")));
     m_buttonClear->setText(Lang::get(QStringLiteral("ClearResults")));
     m_buttonExport->setText(Lang::get(QStringLiteral("ExportResults")));
-    m_buttonSettings->setText(Lang::get(QStringLiteral("Settings")));
-    m_buttonHistory->setText(Lang::get(QStringLiteral("History")));
     m_statusLabel->setText(Lang::get(QStringLiteral("Ready")));
     m_statusCount->setText(Lang::get(QStringLiteral("StatusCountInit")));
 
@@ -407,10 +512,9 @@ void MainWindow::applyLanguage()
     m_progressHintLabel->setText(Lang::get(QStringLiteral("ScanningInProgress")));
     m_buttonStopInDialog->setText(Lang::get(QStringLiteral("StopScan")));
 
-    // 标签自适应宽度（Label.AutoSize）
-    const QLabel *labels[] = {m_labelTitle, m_labelStartIp, m_labelTo, m_labelEndIp};
-    for (const QLabel *label : labels)
-        const_cast<QLabel *>(label)->adjustSize();
+    // 历史页与设置页各自刷新文案
+    m_pageHistory->applyLanguage();
+    m_pageSettings->applyLanguage();
 
     // 刷新所有已打开的结果面板（表格列头 + IP分布图标题/图例）
     for (int i = 0; i < m_tabControlResults->count(); ++i)
@@ -425,37 +529,27 @@ void MainWindow::applyLanguage()
     }
 }
 
-void MainWindow::layoutSearchPanel()
+void MainWindow::switchToPage(int page)
 {
-    if (m_panelSearch == nullptr || m_flowButtons == nullptr)
+    if (m_stack == nullptr)
         return;
 
-    // 按钮行放在 IP 输入框下方
-    const int buttonsY = 34 + 28 + 8;
-    const int paddingRight = 20;
-    const int panelWidth = m_panelSearch->width();
-    const int settingsWidth = m_buttonSettings->width();
-    const int historyWidth = m_buttonHistory->width();
+    m_stack->setCurrentIndex(page);
+    m_navHome->setChecked(page == PageHome);
+    m_navHistory->setChecked(page == PageHistory);
+    m_navSettings->setChecked(page == PageSettings);
 
-    m_buttonHistory->move(panelWidth - paddingRight - settingsWidth - historyWidth - 8, buttonsY);
-    m_buttonSettings->move(panelWidth - paddingRight - settingsWidth, buttonsY);
-
-    const int flowWidth = panelWidth - 20 - paddingRight - settingsWidth - historyWidth - 10 - 8;
-    m_flowButtons->setGeometry(20, buttonsY, qMax(flowWidth, 0), 36);
-
-    // IP 输入框与标签绝对定位（对应设计器的 Location/Size）
-    m_labelTitle->move(20, 8);
-    m_labelStartIp->move(20, 38);
-    m_ipStart->setGeometry(80, 34, 248, 28);
-    m_labelTo->move(335, 38);
-    m_labelEndIp->move(365, 38);
-    m_ipEnd->setGeometry(425, 34, 248, 28);
+    if (page == PageHistory)
+        m_pageHistory->reload();
 }
 
-void MainWindow::resizeEvent(QResizeEvent *event)
+void MainWindow::onHistoryRecordActivated(const ScanHistoryRecord &record)
 {
-    QWidget::resizeEvent(event);
-    layoutSearchPanel();
+    if (record.filePath.isEmpty() && record.devices.isEmpty())
+        return;
+
+    displayHistoryRecord(record);
+    switchToPage(PageHome);
 }
 
 void MainWindow::showEvent(QShowEvent *event)
@@ -472,8 +566,7 @@ void MainWindow::setScanningUiEnabled(bool scanning)
     m_buttonStop->setEnabled(scanning);
     m_buttonClear->setEnabled(!scanning);
     m_buttonExport->setEnabled(!scanning);
-    m_buttonSettings->setEnabled(!scanning);
-    m_buttonHistory->setEnabled(!scanning);
+    m_navSettings->setEnabled(!scanning);
 }
 
 void MainWindow::onScanClicked()
@@ -504,7 +597,7 @@ void MainWindow::onScanClicked()
     }
 
     // 清除之前的标签页
-    m_tabControlResults->clear();
+    clearResultTabs();
 
     // 记录本次扫描范围（用于自动保存历史）
     m_currentStartIp = startIp;
@@ -555,7 +648,7 @@ void MainWindow::onStopClicked()
 
 void MainWindow::onClearClicked()
 {
-    m_tabControlResults->clear();
+    clearResultTabs();
     m_taskbarProgress->setVisible(false);
     m_statusCount->setText(Lang::get(QStringLiteral("StatusCountInit")));
     m_statusLabel->setText(Lang::get(QStringLiteral("Ready")));
@@ -711,7 +804,7 @@ void MainWindow::populateResultTabs(const QVector<DhcpServerInfo> &results)
         groups[key].append(info);
     }
 
-    m_tabControlResults->clear();
+    clearResultTabs();
 
     for (auto it = groups.constBegin(); it != groups.constEnd(); ++it)
     {
@@ -745,6 +838,15 @@ void MainWindow::populateResultTabs(const QVector<DhcpServerInfo> &results)
     m_statusLabel->setText(Lang::get(QStringLiteral("ScanCompletedStatus")));
 }
 
+void MainWindow::showDeviceDetailPreview()
+{
+    // --preview 预览用：新建一个结果页签（含示例设备）并直接弹出设备详情窗
+    SubnetResultPanel *panel = new SubnetResultPanel(m_tabControlResults);
+    m_tabControlResults->addTab(panel, QStringLiteral("Preview"));
+    m_tabControlResults->setCurrentWidget(panel);
+    panel->showDetailPreview();
+}
+
 void MainWindow::displayHistoryRecord(const ScanHistoryRecord &record)
 {
     QVector<DhcpServerInfo> results;
@@ -774,30 +876,18 @@ void MainWindow::onScanFinished()
     closeProgressDialog();
 }
 
-void MainWindow::onSettingsClicked()
+void MainWindow::onSettingsSaved()
 {
-    SettingsDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted)
-    {
-        // 重新加载已保存的设置并应用
-        const AppSettings settings = AppSettings::load();
-        Lang::setCurrent(settings.language);
-        m_scanner->setMaxParallelism(settings.scanThreads);
-        applyLanguage();
-    }
+    // 重新加载已保存的设置并应用
+    const AppSettings settings = AppSettings::load();
+    Lang::setCurrent(settings.language);
+    m_scanner->setMaxParallelism(settings.scanThreads);
+    applyLanguage();
 }
 
-void MainWindow::onHistoryClicked()
+void MainWindow::clearResultTabs()
 {
-    HistoryDialog dialog(this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-
-    const ScanHistoryRecord record = dialog.selectedRecord();
-    if (record.filePath.isEmpty() && record.devices.isEmpty())
-        return;
-
-    displayHistoryRecord(record);
+    m_tabControlResults->clear();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -833,13 +923,13 @@ void MainWindow::showTooManySubnetsMessage(int count)
     QFont mainFont(QStringLiteral("Microsoft YaHei"), 12);
     mainFont.setBold(true);
     labelMain->setFont(mainFont);
-    labelMain->setStyleSheet(QStringLiteral("color: rgb(50,50,50);"));
+    labelMain->setStyleSheet(QStringLiteral("color: #1f2329;"));
     labelMain->setAlignment(Qt::AlignCenter);
     labelMain->setGeometry(20, 25, 310, 35);
 
     QLabel *labelSub = new QLabel(Lang::fmt(QStringLiteral("TooManySubnetsSub"), count), &dialog);
     labelSub->setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
-    labelSub->setStyleSheet(QStringLiteral("color: rgb(160,160,160);"));
+    labelSub->setStyleSheet(QStringLiteral("color: #8a9099;"));
     labelSub->setAlignment(Qt::AlignCenter);
     labelSub->setWordWrap(true);
     labelSub->setGeometry(20, 60, 310, 45);
@@ -848,6 +938,7 @@ void MainWindow::showTooManySubnetsMessage(int count)
     buttonOk->setGeometry(135, 105, 80, 30);
     buttonOk->setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
     buttonOk->setCursor(Qt::PointingHandCursor);
+    buttonOk->setStyleSheet(UiStyle::primaryButtonStyle());
     connect(buttonOk, &QPushButton::clicked, &dialog, &QDialog::accept);
 
     dialog.adjustSize();

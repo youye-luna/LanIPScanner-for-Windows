@@ -52,7 +52,7 @@ IpAddressEdit::IpAddressEdit(QWidget *parent)
             QLabel *dot = new QLabel(QStringLiteral("."), this);
             dot->setAlignment(Qt::AlignCenter);
             dot->setFixedWidth(7);
-            dot->setStyleSheet(QStringLiteral("color: rgb(60,60,60);"));
+            dot->setStyleSheet(QStringLiteral("color: #1f2329;"));
             layout->addWidget(dot, 0);
         }
     }
@@ -155,8 +155,12 @@ void IpAddressEdit::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
+    // 与全局次要按钮/输入框描边保持一致：白底 + 6px 圆角 + #d5d9de 描边
     QPainter painter(this);
-    painter.fillRect(rect(), Qt::white);
-    painter.setPen(QColor(120, 120, 120));
-    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    const QRectF box = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    painter.setPen(QPen(QColor(213, 217, 222), 1.0));
+    painter.setBrush(Qt::white);
+    painter.drawRoundedRect(box, 6.0, 6.0);
 }

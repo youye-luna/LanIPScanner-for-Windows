@@ -20,6 +20,23 @@ struct AppSettings
     int historySaveDays = 30;
     int historySaveMaxRecords = 100;
 
+    /// 日期显示格式；空串表示跟随界面语言
+    QString dateFormat;
+    /// 时间显示格式；空串表示跟随界面语言
+    QString timeFormat;
+
+    /// 可选的日期格式（唯一数据源，设置页与校验共用）
+    static QStringList supportedDateFormats();
+
+    /// 可选的时间格式
+    static QStringList supportedTimeFormats();
+
+    /// 实际生效的日期格式：未设置时回退到当前语言的内置格式
+    QString effectiveDateFormat() const;
+
+    /// 实际生效的时间格式：未设置时回退到当前语言的内置格式
+    QString effectiveTimeFormat() const;
+
     /// 从配置文件加载设置，首次运行时自动检测系统语言并保存
     static AppSettings load();
 

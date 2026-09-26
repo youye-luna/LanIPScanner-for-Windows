@@ -2,17 +2,16 @@
 
 #include "ipgridpanel.h"
 #include "lang.h"
+#include "uistyle.h"
 
 #include <QAbstractItemView>
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QDialog>
-#include <QGridLayout>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QLineEdit>
 #include <QMessageBox>
 #include <QPalette>
 #include <QProcess>
@@ -22,6 +21,7 @@
 #include <QTableWidgetItem>
 #include <QTimer>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <qt_windows.h>
 #include <string>
 
@@ -42,6 +42,7 @@ const int kExportColumnCount = kExportSourceCount + 2;
 const int kDeviceTypeColumn = 4;
 
 QColor dhcpColor() { return QColor(255, 138, 128); }
+QColor dhcpTextColor() { return QColor(211, 47, 47); }
 QColor cameraColor() { return QColor(123, 31, 162); }
 QColor onlineColor() { return QColor(33, 150, 243); }
 QColor offlineColor() { return QColor(76, 175, 80); }
@@ -121,18 +122,21 @@ void SubnetResultPanel::initTable()
     QFont headerFont = gridFont;
     headerFont.setBold(true);
     header->setFont(headerFont);
-    header->setStyleSheet(QStringLiteral(
-        "QHeaderView::section {"
-        "  background-color: rgb(0, 120, 215);"
-        "  color: white;"
-        "  font-weight: bold;"
-        "  border: none;"
-        "  padding-left: 4px;"
-        "}"));
+    header->setStyleSheet(UiStyle::tableHeaderStyle());
 
     const int widths[kColumnCount] = {135, 150, 140, 70, 185};
     for (int i = 0; i < kColumnCount; ++i)
         m_grid->setColumnWidth(i, widths[i]);
+
+    // 主机名（第 3 列）吸收剩余宽度：表格左侧会被拉伸填满，
+    // 若每列都是固定宽度，右侧就会拖出一条与表格同色的空白带。
+    header->setSectionResizeMode(2, QHeaderView::Stretch);
+
+    m_grid->setStyleSheet(UiStyle::tableStyle());
+    // 数据行比默认略高一点，读起来不挤
+    m_grid->verticalHeader()->setDefaultSectionSize(30);
+    m_grid->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_grid->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 
     QPalette palette = m_grid->palette();
     palette.setColor(QPalette::Base, Qt::white);
@@ -220,7 +224,7 @@ void SubnetResultPanel::applyRowStyle(int row, const DhcpServerInfo &info)
     {
         if (QTableWidgetItem *item = m_grid->item(row, kDeviceTypeColumn))
         {
-            item->setForeground(info.isCamera ? cameraColor() : QColor(Qt::red));
+            item->setForeground(info.isCamera ? cameraColor() : dhcpTextColor());
             QFont font = gridFont;
             font.setBold(true);
             item->setFont(font);
@@ -232,7 +236,7 @@ void SubnetResultPanel::applyRowStyle(int row, const DhcpServerInfo &info)
     {
         if (QTableWidgetItem *item = m_grid->item(row, 0))
         {
-            item->setForeground(info.isCamera ? cameraColor() : QColor(0, 102, 204));
+            item->setForeground(info.isCamera ? cameraColor() : dhcpTextColor());
             QFont font = gridFont;
             font.setUnderline(true);
             item->setFont(font);
@@ -310,6 +314,33 @@ void SubnetResultPanel::jumpToRowByLastOctet(int ipLast)
     }
 }
 
+void SubnetResultPanel::showDetailPreview()
+{
+    // --preview 预览用：填入几台不同状态的示例设备，并直接弹出第一台的详情窗，
+    // 便于不扫描就能检查详情窗的样式
+    DhcpServerInfo router;
+    router.ipAddress = QStringLiteral("192.168.31.1");
+    router.macAddress = QStringLiteral("3C:84:6A:11:22:33");
+    router.hostName = QStringLiteral("router.lan");
+    router.isActive = true;
+    router.isDhcpServer = true;
+    router.pingMs = 3;
+
+    DhcpServerInfo camera;
+    camera.ipAddress = QStringLiteral("192.168.31.64");
+    camera.macAddress = QStringLiteral("C4:2F:90:AA:BB:CC");
+    camera.hostName = QStringLiteral("IPC-64");
+    camera.isActive = true;
+    camera.isCamera = true;
+    camera.pingMs = 12;
+
+    DhcpServerInfo offline;
+    offline.ipAddress = QStringLiteral("192.168.31.100");
+
+    populateData(QVector<DhcpServerInfo>{router, camera, offline});
+    showDetailDialog(0);
+}
+
 void SubnetResultPanel::showDetailDialog(int row)
 {
     if (row < 0 || row >= m_grid->rowCount())
@@ -334,11 +365,14 @@ void SubnetResultPanel::showDetailDialog(int row)
         pingMs = m_rowInfos.at(row).pingMs;
     }
 
-    // 表格已把 DHCP/摄像头合并为「设备类型」列，这里按设备信息还原两项取值
-    const QString dhcp =
-        isDhcp ? Lang::get(QStringLiteral("Yes")) : Lang::get(QStringLiteral("No"));
-    const QString camera =
-        isCamera ? Lang::get(QStringLiteral("Yes")) : Lang::get(QStringLiteral("No"));
+    // 与表格「设备类型」列保持一致：DHCP 服务器 / 摄像头 合并为一项
+    QStringList deviceTypes;
+    if (isDhcp)
+        deviceTypes.append(Lang::get(QStringLiteral("ColDhcp")));
+    if (isCamera)
+        deviceTypes.append(Lang::get(QStringLiteral("ColCamera")));
+    const QString deviceType =
+        deviceTypes.isEmpty() ? QStringLiteral("-") : deviceTypes.join(QStringLiteral(" / "));
 
     const QColor statusColor = isCamera ? cameraColor()
                               : (isDhcp ? dhcpColor()
@@ -346,124 +380,174 @@ void SubnetResultPanel::showDetailDialog(int row)
     const QString pingText =
         (isActive && pingMs >= 0) ? QStringLiteral("%1 ms").arg(pingMs) : QStringLiteral("-");
 
-    // 非模态显示：详情窗口不阻塞主窗口，可边看详情边继续操作
-    QDialog *dialog = new QDialog(window());
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setModal(false);
-    dialog->setWindowModality(Qt::NonModal);
-    dialog->setWindowTitle(Lang::fmt(QStringLiteral("DeviceDetail"), ip));
-    dialog->setStyleSheet(QStringLiteral("QDialog { background-color: white; }"));
-
-    // 顶部状态色条
-    QWidget *colorBar = new QWidget(dialog);
-    colorBar->setGeometry(0, 0, 480, 6);
-    colorBar->setAutoFillBackground(true);
-    QPalette barPalette = colorBar->palette();
-    barPalette.setColor(QPalette::Window, statusColor);
-    colorBar->setPalette(barPalette);
-
-    // 标题
-    QLabel *lblTitle = new QLabel(ip, dialog);
-    QFont titleFont = m_grid->font();
-    titleFont.setPointSizeF(14.0);
-    titleFont.setBold(true);
-    lblTitle->setFont(titleFont);
-    lblTitle->setStyleSheet(QStringLiteral("color: rgb(40, 40, 40);"));
-    lblTitle->adjustSize();
-    lblTitle->move(20, 20);
-
-    // 状态标签
-    QLabel *lblStatusTag = new QLabel(dialog);
-    QStringList statusParts;
-    if (isActive)
-        statusParts.append(Lang::get(QStringLiteral("Online")));
-    if (isCamera)
-        statusParts.append(Lang::get(QStringLiteral("ColCamera")));
-    if (isDhcp)
-        statusParts.append(Lang::get(QStringLiteral("ColDhcp")));
-    lblStatusTag->setText(statusParts.isEmpty()
-                              ? Lang::get(QStringLiteral("NoDevice"))
-                              : statusParts.join(QStringLiteral("  |  ")));
-    QFont statusFont = m_grid->font();
-    statusFont.setPointSizeF(9.0);
-    statusFont.setBold(true);
-    lblStatusTag->setFont(statusFont);
-    lblStatusTag->setStyleSheet(QStringLiteral("color: white; background-color: rgb(%1, %2, %3);"
-                                               " padding: 2px 6px;")
-                                    .arg(statusColor.red())
-                                    .arg(statusColor.green())
-                                    .arg(statusColor.blue()));
-    lblStatusTag->adjustSize();
-    lblStatusTag->move(20, 48);
-
     struct Field
     {
         QString label;
         QString value;
         QColor color;
     };
-    const Field fields[6] = {
-        {Lang::get(QStringLiteral("FieldIp")), ip, QColor(40, 40, 40)},
-        {Lang::get(QStringLiteral("FieldMac")), mac, QColor(40, 40, 40)},
-        {Lang::get(QStringLiteral("FieldHost")), host, QColor(40, 40, 40)},
+    const Field fields[5] = {
+        {Lang::get(QStringLiteral("FieldIp")), ip, UiStyle::textPrimaryColor()},
+        {Lang::get(QStringLiteral("FieldMac")), mac, UiStyle::textPrimaryColor()},
+        {Lang::get(QStringLiteral("FieldHost")), host, UiStyle::textPrimaryColor()},
         {Lang::get(QStringLiteral("FieldPing")),
          pingText,
-         pingText != QStringLiteral("-") ? QColor(46, 125, 50) : QColor(Qt::gray)},
-        {Lang::get(QStringLiteral("ColDhcp")), dhcp, isDhcp ? QColor(Qt::red) : QColor(40, 40, 40)},
-        {Lang::get(QStringLiteral("ColCamera")), camera, isCamera ? cameraColor() : QColor(40, 40, 40)},
+         pingText != QStringLiteral("-") ? QColor(46, 125, 50) : UiStyle::textSecondaryColor()},
+        {Lang::get(QStringLiteral("ColDeviceType")),
+         deviceType,
+         isCamera ? cameraColor() : (isDhcp ? dhcpTextColor() : UiStyle::textPrimaryColor())},
     };
 
-    const int infoTop = 86;
-    const int rowHeight = 34;
-    const int infoHeight = 6 * rowHeight;
+    // 非模态显示：详情窗口不阻塞主窗口，可边看详情边继续操作
+    QDialog *dialog = new QDialog(window());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setModal(false);
+    dialog->setWindowModality(Qt::NonModal);
+    dialog->setWindowTitle(Lang::fmt(QStringLiteral("DeviceDetail"), ip));
+    // 去掉标题栏上的「?」帮助按钮，标题栏更干净
+    dialog->setWindowFlags(dialog->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    dialog->setStyleSheet(QStringLiteral("QDialog { background-color: #ffffff; }"));
+    dialog->setFixedWidth(480);
 
-    QWidget *infoTable = new QWidget(dialog);
-    infoTable->setGeometry(20, infoTop, 440, infoHeight);
-    infoTable->setStyleSheet(QStringLiteral("background-color: rgb(245, 247, 249);"));
+    QVBoxLayout *rootLayout = new QVBoxLayout(dialog);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
 
-    QGridLayout *infoLayout = new QGridLayout(infoTable);
-    infoLayout->setContentsMargins(0, 0, 0, 0);
-    infoLayout->setSpacing(0);
+    // 顶部状态色条：颜色随设备状态变化
+    QWidget *colorBar = new QWidget(dialog);
+    colorBar->setFixedHeight(5);
+    colorBar->setAutoFillBackground(true);
+    QPalette barPalette = colorBar->palette();
+    barPalette.setColor(QPalette::Window, statusColor);
+    colorBar->setPalette(barPalette);
+    rootLayout->addWidget(colorBar);
 
-    QFont labelFont = m_grid->font();
+    // 头部：IP 主标题 + 状态徽章；底色取状态色的极浅色调
+    const QColor headerTint(qRound(statusColor.red() * 0.10 + 229.5),
+                            qRound(statusColor.green() * 0.10 + 229.5),
+                            qRound(statusColor.blue() * 0.10 + 229.5));
+    QWidget *header = new QWidget(dialog);
+    header->setAutoFillBackground(true);
+    QPalette headerPalette = header->palette();
+    headerPalette.setColor(QPalette::Window, headerTint);
+    header->setPalette(headerPalette);
+
+    QVBoxLayout *headerLayout = new QVBoxLayout(header);
+    headerLayout->setContentsMargins(24, 18, 24, 16);
+    headerLayout->setSpacing(10);
+
+    QLabel *lblTitle = new QLabel(ip, header);
+    QFont titleFont = dialog->font();
+    titleFont.setPointSizeF(17.0);
+    titleFont.setBold(true);
+    lblTitle->setFont(titleFont);
+    lblTitle->setStyleSheet(QStringLiteral("color: #1f2329; background-color: transparent;"));
+    headerLayout->addWidget(lblTitle);
+
+    struct Tag
+    {
+        QString text;
+        QColor color;
+    };
+    QList<Tag> tags;
+    if (isActive)
+        tags.append(Tag{Lang::get(QStringLiteral("Online")), onlineColor()});
+    if (isCamera)
+        tags.append(Tag{Lang::get(QStringLiteral("ColCamera")), cameraColor()});
+    if (isDhcp)
+        tags.append(Tag{Lang::get(QStringLiteral("ColDhcp")), dhcpColor()});
+    if (tags.isEmpty())
+        tags.append(Tag{Lang::get(QStringLiteral("NoDevice")), QColor(158, 158, 158)});
+
+    QHBoxLayout *tagLayout = new QHBoxLayout;
+    tagLayout->setContentsMargins(0, 0, 0, 0);
+    tagLayout->setSpacing(6);
+    for (const Tag &tag : tags)
+    {
+        QLabel *pill = new QLabel(tag.text, header);
+        pill->setFixedHeight(22);
+        pill->setAlignment(Qt::AlignCenter);
+        QFont pillFont = dialog->font();
+        pillFont.setPointSizeF(8.5);
+        pillFont.setBold(true);
+        pill->setFont(pillFont);
+        pill->setStyleSheet(QStringLiteral("color: #ffffff; background-color: %1;"
+                                          " border-radius: 11px; padding: 0 12px;")
+                                .arg(tag.color.name()));
+        tagLayout->addWidget(pill);
+    }
+    tagLayout->addStretch(1);
+    headerLayout->addLayout(tagLayout);
+    rootLayout->addWidget(header);
+
+    // 信息卡片：白底、圆角描边，行间用浅色分隔线
+    QWidget *body = new QWidget(dialog);
+    QVBoxLayout *bodyLayout = new QVBoxLayout(body);
+    bodyLayout->setContentsMargins(20, 18, 20, 0);
+    bodyLayout->setSpacing(0);
+
+    QWidget *infoCard = new QWidget(body);
+    infoCard->setObjectName(QStringLiteral("detailCard"));
+    infoCard->setAttribute(Qt::WA_StyledBackground, true);
+    infoCard->setStyleSheet(QStringLiteral("QWidget#detailCard { background-color: #ffffff;"
+                                           " border: 1px solid #e6e8ec; border-radius: 8px; }"));
+
+    QVBoxLayout *rowsLayout = new QVBoxLayout(infoCard);
+    rowsLayout->setContentsMargins(0, 6, 0, 6);
+    rowsLayout->setSpacing(0);
+
+    QFont labelFont = dialog->font();
     labelFont.setPointSizeF(9.5);
     QFont valueFont = labelFont;
     valueFont.setBold(true);
 
-    const QString cellBorder = QStringLiteral("1px solid rgb(205, 210, 215)");
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         const Field &field = fields[i];
-        const QString topBorder = (i == 0) ? cellBorder : QStringLiteral("none");
 
-        QLabel *label = new QLabel(field.label, infoTable);
-        label->setFixedWidth(105);
+        QWidget *rowWidget = new QWidget(infoCard);
+        rowWidget->setFixedHeight(36);
+        QHBoxLayout *rowLayout = new QHBoxLayout(rowWidget);
+        rowLayout->setContentsMargins(16, 0, 16, 0);
+        rowLayout->setSpacing(10);
+
+        QLabel *label = new QLabel(field.label, rowWidget);
+        label->setFixedWidth(96);
         label->setFont(labelFont);
-        label->setStyleSheet(QStringLiteral("color: rgb(100, 100, 100);"
-                                            " background-color: rgb(245, 247, 249);"
-                                            " border-top: %1; border-bottom: %2;"
-                                            " border-left: %2; border-right: none;"
-                                            " padding-left: 10px;")
-                                 .arg(topBorder, cellBorder));
-        infoLayout->addWidget(label, i, 0);
+        label->setStyleSheet(QStringLiteral("color: #8a9099; background-color: transparent;"));
+        rowLayout->addWidget(label);
 
-        QLineEdit *value = new QLineEdit(field.value, infoTable);
-        value->setReadOnly(true);
-        value->setFrame(false);
+        // 用可选中的 QLabel 展示取值：文字更干净，也能按住选中复制单个字段
+        QLabel *value = new QLabel(field.value, rowWidget);
         value->setFont(valueFont);
-        value->setStyleSheet(QStringLiteral("border-top: %1; border-bottom: %2;"
-                                            " border-right: %2; border-left: none;"
-                                            " background-color: rgb(245, 247, 249);"
-                                            " padding-left: 8px; color: rgb(%3, %4, %5);")
-                                 .arg(topBorder, cellBorder)
-                                 .arg(field.color.red())
-                                 .arg(field.color.green())
-                                 .arg(field.color.blue()));
-        infoLayout->addWidget(value, i, 1);
-    }
-    infoLayout->setColumnStretch(1, 1);
+        value->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        value->setStyleSheet(QStringLiteral("color: %1; background-color: transparent;")
+                                 .arg(field.color.name()));
+        rowLayout->addWidget(value, 1);
 
-    const int y = infoTop + infoHeight + 16;
+        rowsLayout->addWidget(rowWidget);
+
+        if (i != 4)
+        {
+            QWidget *lineHolder = new QWidget(infoCard);
+            lineHolder->setFixedHeight(1);
+            QHBoxLayout *lineLayout = new QHBoxLayout(lineHolder);
+            lineLayout->setContentsMargins(16, 0, 16, 0);
+            lineLayout->setSpacing(0);
+
+            QWidget *line = new QWidget(lineHolder);
+            line->setAutoFillBackground(true);
+            QPalette linePalette = line->palette();
+            linePalette.setColor(QPalette::Window, UiStyle::borderColor());
+            line->setPalette(linePalette);
+            lineLayout->addWidget(line);
+
+            rowsLayout->addWidget(lineHolder);
+        }
+    }
+
+    bodyLayout->addWidget(infoCard);
+    rootLayout->addWidget(body);
 
     const AppLanguage language = Lang::current();
     QString copyDetailsText;
@@ -488,39 +572,44 @@ void SubnetResultPanel::showDetailDialog(int row)
         break;
     }
 
-    const int btnW = 120;
-    const int btnH = 35;
-    const int gap = 10;
+    const int btnW = 130;
+    const int btnH = 36;
 
-    QFont buttonFont = m_grid->font();
-    buttonFont.setPointSizeF(9.0);
+    QFont buttonFont = dialog->font();
+    buttonFont.setPointSizeF(9.5);
     QFont boldButtonFont = buttonFont;
     boldButtonFont.setBold(true);
 
+    // 次要操作：白底描边，统一取全局按钮样式
     QPushButton *btnCopy = new QPushButton(copyDetailsText, dialog);
     btnCopy->setFixedSize(btnW, btnH);
     btnCopy->setCursor(Qt::PointingHandCursor);
     btnCopy->setFont(buttonFont);
+    btnCopy->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     QPushButton *btnPing = new QPushButton(QStringLiteral("Ping"), dialog);
     btnPing->setFixedSize(btnW, btnH);
     btnPing->setCursor(Qt::PointingHandCursor);
     btnPing->setFont(boldButtonFont);
+    btnPing->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     QPushButton *btnWeb = new QPushButton(Lang::get(QStringLiteral("AccessAdmin")), dialog);
     btnWeb->setFixedSize(btnW, btnH);
     btnWeb->setCursor(Qt::PointingHandCursor);
     btnWeb->setFont(boldButtonFont);
+    btnWeb->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     QPushButton *btnIe = new QPushButton(Lang::get(QStringLiteral("IeAccess")), dialog);
     btnIe->setFixedSize(btnW, btnH);
     btnIe->setCursor(Qt::PointingHandCursor);
     btnIe->setFont(boldButtonFont);
+    btnIe->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     QPushButton *btnClose = new QPushButton(Lang::get(QStringLiteral("Close")), dialog);
     btnClose->setFixedSize(btnW, btnH);
     btnClose->setCursor(Qt::PointingHandCursor);
     btnClose->setFont(boldButtonFont);
+    btnClose->setStyleSheet(UiStyle::secondaryButtonStyle());
 
     connect(btnCopy, &QPushButton::clicked, dialog,
             [fields, btnCopy, copyDetailsText, copiedText]() {
@@ -593,19 +682,35 @@ void SubnetResultPanel::showDetailDialog(int row)
             visibleButtons.append(button);
     }
 
-    const int columns = qMin(3, visibleButtons.size());
-    const int rows = (visibleButtons.size() + columns - 1) / columns;
-    dialog->setFixedSize(480, y + rows * btnH + (rows - 1) * gap + 20);
+    // 底部按钮区：每行最多 3 个，行内居中，宽度保持一致
+    QWidget *footer = new QWidget(dialog);
+    QVBoxLayout *footerLayout = new QVBoxLayout(footer);
+    footerLayout->setContentsMargins(20, 16, 20, 20);
+    footerLayout->setSpacing(10);
 
-    for (int i = 0; i < visibleButtons.size(); ++i)
+    const int columns = 3;
+    for (int i = 0; i < visibleButtons.size(); i += columns)
     {
-        const int r = i / columns;
-        const int c = i % columns;
-        const int rowCount = qMin(columns, visibleButtons.size() - r * columns);
-        const int rowWidth = rowCount * btnW + (rowCount - 1) * gap;
-        const int rowStartX = (480 - rowWidth) / 2;
-        visibleButtons.at(i)->setGeometry(rowStartX + c * (btnW + gap), y + r * (btnH + gap), btnW,
-                                          btnH);
+        QHBoxLayout *rowLayout = new QHBoxLayout;
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(10);
+        rowLayout->addStretch(1);
+
+        const int rowCount = qMin(columns, visibleButtons.size() - i);
+        for (int c = 0; c < rowCount; ++c)
+            rowLayout->addWidget(visibleButtons.at(i + c));
+
+        rowLayout->addStretch(1);
+        footerLayout->addLayout(rowLayout);
+    }
+    rootLayout->addWidget(footer);
+
+    // 以主窗口为参照居中，避免新窗口出现在屏幕角落
+    dialog->adjustSize();
+    if (QWidget *owner = window())
+    {
+        const QPoint ownerCenter = owner->frameGeometry().center();
+        dialog->move(ownerCenter.x() - dialog->width() / 2, ownerCenter.y() - dialog->height() / 2);
     }
 
     dialog->show();

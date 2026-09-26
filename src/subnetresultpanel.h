@@ -27,6 +27,9 @@ public:
     /// 切换语言后刷新列头与单元格文本
     void refreshLanguage();
 
+    /// 预览用：不扫描，填入示例设备后直接弹出设备详情窗（--preview 启动参数）
+    void showDetailPreview();
+
 private:
     void initTable();
     void applyRowStyle(int row, const DhcpServerInfo &info);

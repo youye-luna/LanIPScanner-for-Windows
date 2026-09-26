@@ -20,7 +20,41 @@ int clampInt(int value, int minimum, int maximum)
 {
     return std::max(minimum, std::min(maximum, value));
 }
+
+/// 读取格式类设置：只接受白名单内的值，其余（含缺失、空串）一律视为「跟随语言」
+QString readFormat(const QJsonObject &object, const QString &key, const QStringList &supported)
+{
+    const QString value = object.value(key).toString();
+    return supported.contains(value) ? value : QString();
+}
 } // namespace
+
+QStringList AppSettings::supportedDateFormats()
+{
+    return {QStringLiteral("yyyy-MM-dd"), QStringLiteral("yyyy/MM/dd"),
+            QStringLiteral("yyyy年MM月dd日"), QStringLiteral("MM/dd/yyyy"),
+            QStringLiteral("dd/MM/yyyy")};
+}
+
+QStringList AppSettings::supportedTimeFormats()
+{
+    return {QStringLiteral("HH:mm:ss"), QStringLiteral("HH:mm"), QStringLiteral("hh:mm:ss AP"),
+            QStringLiteral("hh:mm AP")};
+}
+
+QString AppSettings::effectiveDateFormat() const
+{
+    if (!dateFormat.isEmpty())
+        return dateFormat;
+    return Lang::get(QStringLiteral("HistoryDateFormat"));
+}
+
+QString AppSettings::effectiveTimeFormat() const
+{
+    if (!timeFormat.isEmpty())
+        return timeFormat;
+    return Lang::get(QStringLiteral("HistoryTimeFormat"));
+}
 
 QString AppSettings::configDir()
 {
@@ -84,6 +118,10 @@ AppSettings AppSettings::load()
                     object.value(QStringLiteral("HistorySaveDays")).toInt(30), 0, 3650);
                 settings.historySaveMaxRecords = clampInt(
                     object.value(QStringLiteral("HistorySaveMaxRecords")).toInt(100), 1, 10000);
+                settings.dateFormat = readFormat(object, QStringLiteral("DateFormat"),
+                                                 supportedDateFormats());
+                settings.timeFormat = readFormat(object, QStringLiteral("TimeFormat"),
+                                                 supportedTimeFormats());
                 return settings;
             }
         }
@@ -108,6 +146,8 @@ void AppSettings::save() const
     object.insert(QStringLiteral("HistorySaveMode"), static_cast<int>(historySaveMode));
     object.insert(QStringLiteral("HistorySaveDays"), historySaveDays);
     object.insert(QStringLiteral("HistorySaveMaxRecords"), historySaveMaxRecords);
+    object.insert(QStringLiteral("DateFormat"), dateFormat);
+    object.insert(QStringLiteral("TimeFormat"), timeFormat);
 
     QFile file(filePath());
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))

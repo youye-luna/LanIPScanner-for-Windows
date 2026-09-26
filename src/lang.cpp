@@ -17,6 +17,7 @@ struct TextEntry
 // 主窗口
 const TextEntry kZh[] = {
     {"FormTitle", "局域网设备扫描工具"},
+    {"Home", "主页"},
     {"ScanRangeTitle", "搜索范围设置"},
     {"StartIp", "起始IP:"},
     {"To", "至"},
@@ -84,9 +85,9 @@ const TextEntry kZh[] = {
 
     // 设备详情
     {"DeviceDetail", "设备详情 - {0}"},
-    {"FieldIp", "IP 地 址"},
+    {"FieldIp", "IP 地址"},
     {"FieldMac", "MAC 地址"},
-    {"FieldHost", "主 机 名"},
+    {"FieldHost", "主机名"},
     {"FieldPing", "延迟"},
     {"AccessAdmin", "访问后台"},
     {"IeAccess", "IE访问"},
@@ -104,8 +105,18 @@ const TextEntry kZh[] = {
     {"ThreadsLabel", "扫描线程数:"},
     {"ThreadsHint", "并发扫描的线程数（1-100），线程越多扫描越快，但会占用更多系统资源"},
 
+    // 语言和时间
+    {"LanguageTimeSection", "语言和时间"},
+    {"DateFormatLabel", "日期格式:"},
+    {"TimeFormatLabel", "时间格式:"},
+    {"FormatFollowLanguage", "默认（{0}）"},
+
+    // 扫描设置
+    {"ScanSettingsSection", "扫描设置"},
+
     // 数据保存配置
-    {"SaveMethodGroup", "数据保存方式"},
+    {"HistorySettings", "历史记录设置"},
+    {"SaveMethodGroup", "数据保存时长"},
     {"SaveByTime", "按时间保存"},
     {"SaveByCount", "按数量保存"},
     {"SaveRangeGroup", "保存范围"},
@@ -127,7 +138,7 @@ const TextEntry kZh[] = {
     {"AboutTitle", "关于"},
     {"AboutVersion", "版本号: {0}"},
     {"AboutCreator", "创作者: {0}"},
-    {"AboutFeatures", "扫描局域网在线设备|检测DHCP服务器|多网段自动分组|导出扫描结果|多语言界面支持"},
+    {"AboutFeatures", "扫描局域网在线设备|摄像头智能识别|DHCP服务器检测|扫描历史与IP分布图|CSV导出与多语言"},
     {"AboutOpenSource", "本软件使用了以下开源组件"},
     {"AboutQtLicense", "Qt 5.15 社区版（GNU LGPL v3）"},
     {"AboutNmapLicense", "Nmap 7.991（Nmap Public Source License）"},
@@ -136,6 +147,7 @@ const TextEntry kZh[] = {
     {"HistoryTitle", "扫描历史"},
     {"HistoryHint", "双击历史记录可重新加载扫描结果"},
     {"HistoryDateFormat", "yyyy年MM月dd日"},
+    {"HistoryTimeFormat", "HH:mm:ss"},
     {"HistoryRangeFormat", "{0}~{1}（IP）"},
     {"ColHistoryTime", "扫描时间"},
     {"ColHistoryRange", "扫描范围"},
@@ -154,6 +166,7 @@ const TextEntry kZh[] = {
 
 const TextEntry kEn[] = {
     {"FormTitle", "LAN Device Scanner"},
+    {"Home", "Home"},
     {"ScanRangeTitle", "Scan Range Settings"},
     {"StartIp", "Start IP:"},
     {"To", "to"},
@@ -234,7 +247,15 @@ const TextEntry kEn[] = {
     {"ThreadsLabel", "Scan threads:"},
     {"ThreadsHint", "Number of concurrent scan threads (1-100). More threads speed up the scan but use more system resources"},
 
-    {"SaveMethodGroup", "Data Save Method"},
+    {"LanguageTimeSection", "Language & Time"},
+    {"DateFormatLabel", "Date format:"},
+    {"TimeFormatLabel", "Time format:"},
+    {"FormatFollowLanguage", "Default ({0})"},
+
+    {"ScanSettingsSection", "Scan Settings"},
+
+    {"HistorySettings", "History Settings"},
+    {"SaveMethodGroup", "Data Save Duration"},
     {"SaveByTime", "Save by time"},
     {"SaveByCount", "Save by count"},
     {"SaveRangeGroup", "Save Range"},
@@ -255,7 +276,7 @@ const TextEntry kEn[] = {
     {"AboutTitle", "About"},
     {"AboutVersion", "Version: {0}"},
     {"AboutCreator", "Creator: {0}"},
-    {"AboutFeatures", "Scan LAN online devices|Detect DHCP servers|Auto-group by subnet|Export scan results|Multi-language UI support"},
+    {"AboutFeatures", "Scan LAN online devices|Smart camera detection|DHCP server detection|Scan history & IP grid|CSV export & multi-language"},
     {"AboutOpenSource", "Open source components"},
     {"AboutQtLicense", "Qt 5.15 Community Edition (GNU LGPL v3)"},
     {"AboutNmapLicense", "Nmap 7.991 (Nmap Public Source License)"},
@@ -263,6 +284,7 @@ const TextEntry kEn[] = {
     {"HistoryTitle", "Scan History"},
     {"HistoryHint", "Double-click a record to reload the scan results"},
     {"HistoryDateFormat", "yyyy-MM-dd"},
+    {"HistoryTimeFormat", "hh:mm:ss AP"},
     {"HistoryRangeFormat", "{0}~{1} (IP)"},
     {"ColHistoryTime", "Scan Time"},
     {"ColHistoryRange", "Scan Range"},
@@ -281,6 +303,7 @@ const TextEntry kEn[] = {
 
 const TextEntry kZhTw[] = {
     {"FormTitle", "區域網路裝置掃描工具"},
+    {"Home", "首頁"},
     {"ScanRangeTitle", "掃描範圍設定"},
     {"StartIp", "起始IP:"},
     {"To", "至"},
@@ -343,9 +366,9 @@ const TextEntry kZhTw[] = {
     {"No", "否"},
 
     {"DeviceDetail", "裝置詳情 - {0}"},
-    {"FieldIp", "IP 位 址"},
+    {"FieldIp", "IP 位址"},
     {"FieldMac", "MAC 位址"},
-    {"FieldHost", "主 機 名"},
+    {"FieldHost", "主機名"},
     {"FieldPing", "延遲"},
     {"AccessAdmin", "存取後台"},
     {"IeAccess", "IE存取"},
@@ -361,7 +384,15 @@ const TextEntry kZhTw[] = {
     {"ThreadsLabel", "掃描執行緒數:"},
     {"ThreadsHint", "並行掃描的執行緒數（1-100），執行緒越多掃描越快，但會占用更多系統資源"},
 
-    {"SaveMethodGroup", "資料保存方式"},
+    {"LanguageTimeSection", "語言和時間"},
+    {"DateFormatLabel", "日期格式:"},
+    {"TimeFormatLabel", "時間格式:"},
+    {"FormatFollowLanguage", "預設（{0}）"},
+
+    {"ScanSettingsSection", "掃描設定"},
+
+    {"HistorySettings", "歷史記錄設定"},
+    {"SaveMethodGroup", "資料保存時長"},
     {"SaveByTime", "按時間保存"},
     {"SaveByCount", "按數量保存"},
     {"SaveRangeGroup", "保存範圍"},
@@ -382,7 +413,7 @@ const TextEntry kZhTw[] = {
     {"AboutTitle", "關於"},
     {"AboutVersion", "版本號: {0}"},
     {"AboutCreator", "創作者: {0}"},
-    {"AboutFeatures", "掃描區域網路線上裝置|偵測DHCP伺服器|多網段自動分組|匯出掃描結果|多語言介面支援"},
+    {"AboutFeatures", "掃描區域網路線上裝置|攝影機智慧識別|DHCP伺服器檢測|掃描歷史與IP分布圖|CSV匯出與多語言"},
     {"AboutOpenSource", "本軟體使用了以下開源組件"},
     {"AboutQtLicense", "Qt 5.15 社群版（GNU LGPL v3）"},
     {"AboutNmapLicense", "Nmap 7.991（Nmap Public Source License）"},
@@ -390,6 +421,7 @@ const TextEntry kZhTw[] = {
     {"HistoryTitle", "掃描歷史"},
     {"HistoryHint", "雙擊歷史記錄可重新載入掃描結果"},
     {"HistoryDateFormat", "yyyy年MM月dd日"},
+    {"HistoryTimeFormat", "HH:mm:ss"},
     {"HistoryRangeFormat", "{0}~{1}（IP）"},
     {"ColHistoryTime", "掃描時間"},
     {"ColHistoryRange", "掃描範圍"},
@@ -408,6 +440,7 @@ const TextEntry kZhTw[] = {
 
 const TextEntry kZhHk[] = {
     {"FormTitle", "區域網絡裝置掃描工具"},
+    {"Home", "首頁"},
     {"ScanRangeTitle", "掃描範圍設定"},
     {"StartIp", "起始IP:"},
     {"To", "至"},
@@ -470,9 +503,9 @@ const TextEntry kZhHk[] = {
     {"No", "否"},
 
     {"DeviceDetail", "裝置詳情 - {0}"},
-    {"FieldIp", "IP 位 址"},
+    {"FieldIp", "IP 位址"},
     {"FieldMac", "MAC 位址"},
-    {"FieldHost", "主 機 名"},
+    {"FieldHost", "主機名"},
     {"FieldPing", "延遲"},
     {"AccessAdmin", "存取後台"},
     {"IeAccess", "IE存取"},
@@ -488,7 +521,15 @@ const TextEntry kZhHk[] = {
     {"ThreadsLabel", "掃描執行緒數:"},
     {"ThreadsHint", "並行掃描的執行緒數（1-100），執行緒越多掃描越快，但會占用更多系統資源"},
 
-    {"SaveMethodGroup", "資料保存方式"},
+    {"LanguageTimeSection", "語言和時間"},
+    {"DateFormatLabel", "日期格式:"},
+    {"TimeFormatLabel", "時間格式:"},
+    {"FormatFollowLanguage", "預設（{0}）"},
+
+    {"ScanSettingsSection", "掃描設定"},
+
+    {"HistorySettings", "歷史記錄設定"},
+    {"SaveMethodGroup", "資料保存時長"},
     {"SaveByTime", "按時間保存"},
     {"SaveByCount", "按數量保存"},
     {"SaveRangeGroup", "保存範圍"},
@@ -509,7 +550,7 @@ const TextEntry kZhHk[] = {
     {"AboutTitle", "關於"},
     {"AboutVersion", "版本號: {0}"},
     {"AboutCreator", "創作者: {0}"},
-    {"AboutFeatures", "掃描區域網絡線上裝置|偵測DHCP伺服器|多網段自動分組|匯出掃描結果|多語言介面支援"},
+    {"AboutFeatures", "掃描區域網絡線上裝置|攝影機智慧識別|DHCP伺服器檢測|掃描歷史與IP分布圖|CSV匯出與多語言"},
     {"AboutOpenSource", "本軟體使用了以下開源組件"},
     {"AboutQtLicense", "Qt 5.15 社群版（GNU LGPL v3）"},
     {"AboutNmapLicense", "Nmap 7.991（Nmap Public Source License）"},
@@ -517,6 +558,7 @@ const TextEntry kZhHk[] = {
     {"HistoryTitle", "掃描歷史"},
     {"HistoryHint", "雙擊歷史記錄可重新載入掃描結果"},
     {"HistoryDateFormat", "yyyy年MM月dd日"},
+    {"HistoryTimeFormat", "HH:mm:ss"},
     {"HistoryRangeFormat", "{0}~{1}（IP）"},
     {"ColHistoryTime", "掃描時間"},
     {"ColHistoryRange", "掃描範圍"},

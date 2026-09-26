@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "scanner.h"
+#include "uistyle.h"
 
 #include <QApplication>
 #include <QFont>
@@ -13,9 +14,12 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("LanIPScanner"));
-    QApplication::setApplicationVersion(QStringLiteral("1.5-beta2"));
+    QApplication::setApplicationVersion(QStringLiteral("1.5-beta3"));
     QApplication::setWindowIcon(QIcon(QStringLiteral(":/app.ico")));
     app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 9));
+
+    // 统一系统消息框外观：QMessageBox 是原生控件，不受各页面样式影响
+    app.setStyleSheet(UiStyle::messageBoxStyle());
 
     // 跨线程信号需要注册自定义类型
     qRegisterMetaType<DhcpServerInfo>("DhcpServerInfo");
@@ -23,6 +27,10 @@ int main(int argc, char *argv[])
 
     MainWindow window;
     window.show();
+
+    // --preview：不扫描，直接用示例数据弹出设备详情窗，便于检查界面样式
+    if (app.arguments().contains(QStringLiteral("--preview")))
+        window.showDeviceDetailPreview();
 
     return app.exec();
 }

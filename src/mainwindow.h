@@ -6,21 +6,21 @@
 #include <QVector>
 #include <QWidget>
 
+class HistoryPanel;
+class IpAddressEdit;
+class QCloseEvent;
 class QDialog;
 class QLabel;
 class QProgressBar;
 class QPushButton;
-class QTabWidget;
-class QCloseEvent;
-class QResizeEvent;
 class QShowEvent;
+class QStackedWidget;
+class QTabWidget;
 class QWinTaskbarButton;
 class QWinTaskbarProgress;
+class SettingsPanel;
 
-class IpAddressEdit;
-class SubnetResultPanel;
-
-/// 主窗口
+/// 主窗口：顶部导航栏 + 主页/历史/设置三个页面的容器
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -28,9 +28,11 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+    /// 预览用：不扫描，直接弹出设备详情窗（--preview 启动参数）
+    void showDeviceDetailPreview();
+
 protected:
     void closeEvent(QCloseEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
     void showEvent(QShowEvent *event) override;
 
 private slots:
@@ -38,8 +40,8 @@ private slots:
     void onStopClicked();
     void onClearClicked();
     void onExportClicked();
-    void onSettingsClicked();
-    void onHistoryClicked();
+    void onSettingsSaved();
+    void onHistoryRecordActivated(const ScanHistoryRecord &record);
 
     void onScanProgress(int progress);
     void onScanCompleted(const QVector<DhcpServerInfo> &results);
@@ -47,11 +49,22 @@ private slots:
     void onScanFinished();
 
 private:
+    /// 顶部导航对应的页面（顺序与 QStackedWidget 一致）
+    enum Page
+    {
+        PageHome = 0,
+        PageHistory = 1,
+        PageSettings = 2,
+    };
+
     void buildUi();
+    QWidget *buildNavBar();
+    QWidget *buildHomePage();
     void applyLanguage();
-    void layoutSearchPanel();
+    void switchToPage(int page);
     void setScanningUiEnabled(bool scanning);
     void populateResultTabs(const QVector<DhcpServerInfo> &results);
+    void clearResultTabs();
     void saveScanHistory(const QVector<DhcpServerInfo> &results);
     void displayHistoryRecord(const ScanHistoryRecord &record);
     bool exportToCsv(const QString &filePath, QString *errorMessage);
@@ -59,26 +72,37 @@ private:
     void showProgressDialog();
     void closeProgressDialog();
 
-    // 搜索面板
-    QWidget *m_panelSearch = nullptr;
+    // 顶部导航栏
+    QWidget *m_navBar = nullptr;
+    QLabel *m_navTitle = nullptr;
+    QPushButton *m_navHome = nullptr;
+    QPushButton *m_navHistory = nullptr;
+    QPushButton *m_navSettings = nullptr;
+
+    // 页面容器
+    QStackedWidget *m_stack = nullptr;
+    QWidget *m_pageHome = nullptr;
+    HistoryPanel *m_pageHistory = nullptr;
+    SettingsPanel *m_pageSettings = nullptr;
+
+    // 主页：搜索卡片
     QLabel *m_labelTitle = nullptr;
     QLabel *m_labelStartIp = nullptr;
     IpAddressEdit *m_ipStart = nullptr;
     QLabel *m_labelTo = nullptr;
     QLabel *m_labelEndIp = nullptr;
     IpAddressEdit *m_ipEnd = nullptr;
-    QWidget *m_flowButtons = nullptr;
     QPushButton *m_buttonScan = nullptr;
     QPushButton *m_buttonStop = nullptr;
     QPushButton *m_buttonClear = nullptr;
     QPushButton *m_buttonExport = nullptr;
-    QPushButton *m_buttonSettings = nullptr;
-    QPushButton *m_buttonHistory = nullptr;
 
-    // 进度（显示在 Windows 任务栏图标上）与结果
+    // 主页：结果标签页
+    QTabWidget *m_tabControlResults = nullptr;
+
+    // 进度（显示在 Windows 任务栏图标上）
     QWinTaskbarButton *m_taskbarButton = nullptr;
     QWinTaskbarProgress *m_taskbarProgress = nullptr;
-    QTabWidget *m_tabControlResults = nullptr;
 
     // 扫描进度弹窗（带百分比）
     QDialog *m_progressDialog = nullptr;

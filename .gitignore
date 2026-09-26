@@ -3,6 +3,7 @@ build/
 release/
 *.exe
 *.zip
+installer/LanIPScanner.iss
 
 ## IDE
 .vs/

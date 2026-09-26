@@ -63,14 +63,13 @@ set(PROJECT_SOURCES
     src/subnetresultpanel.h
     src/subnetresultpanel.cpp
 
-    src/settingsdialog.h
-    src/settingsdialog.cpp
+    src/settingspanel.h
+    src/settingspanel.cpp
 
-    src/historydialog.h
-    src/historydialog.cpp
+    src/historypanel.h
+    src/historypanel.cpp
 
-    src/aboutdialog.h
-    src/aboutdialog.cpp
+    src/uistyle.h
 
     src/mainwindow.h
     src/mainwindow.cpp
